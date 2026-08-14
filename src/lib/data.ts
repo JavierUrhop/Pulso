@@ -1,0 +1,45 @@
+import { createClient } from '@/lib/supabase/server';
+import { weekNumberFor } from '@/lib/week';
+import type {
+  Competition, Participant, Workout, Wildcard, ParticipantGoal, Sport,
+} from '@/lib/types';
+
+/**
+ * Carga todo el estado de una competencia de una sola vez.
+ * Con equipos de ~15 personas esto es unos pocos cientos de filas,
+ * así que es más simple y más rápido que consultar por pantalla.
+ */
+export async function loadCompetition(competitionId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [comp, parts, works, cards, goals, sports] = await Promise.all([
+    supabase.from('competitions').select('*').eq('id', competitionId).single(),
+    supabase.from('participants').select('*').eq('competition_id', competitionId)
+      .order('display_name'),
+    supabase.from('workouts').select('*').eq('competition_id', competitionId)
+      .order('created_at', { ascending: false }),
+    supabase.from('wildcards').select('*').eq('competition_id', competitionId),
+    supabase.from('participant_goals').select('*').eq('competition_id', competitionId),
+    supabase.from('sports').select('*').eq('is_active', true).order('sort_order'),
+  ]);
+
+  if (comp.error || !comp.data) return null;
+
+  const competition = comp.data as Competition;
+  const participants = (parts.data ?? []) as Participant[];
+
+  return {
+    user,
+    competition,
+    participants,
+    workouts: (works.data ?? []) as Workout[],
+    wildcards: (cards.data ?? []) as Wildcard[],
+    goals: (goals.data ?? []) as ParticipantGoal[],
+    sports: (sports.data ?? []) as Sport[],
+    me: participants.find(p => p.user_id === user?.id) ?? null,
+    currentWeek: weekNumberFor(competition.start_date),
+  };
+}
+
+export type CompetitionData = NonNullable<Awaited<ReturnType<typeof loadCompetition>>>;
