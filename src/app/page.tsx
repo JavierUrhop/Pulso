@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { weekNumberFor, formatWeekRange } from '@/lib/week';
-import { Empty } from '@/components/ui';
+import { Empty, Brand } from '@/components/ui';
 import SignOut from '@/components/SignOut';
 import type { Competition } from '@/lib/types';
 
@@ -12,38 +12,32 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: competitions } = await supabase
-    .from('competitions')
-    .select('*')
-    .eq('is_active', true)
+    .from('competitions').select('*').eq('is_active', true)
     .order('start_date', { ascending: false });
 
   const { data: mine } = await supabase
-    .from('participants')
-    .select('competition_id, display_name, nickname')
+    .from('participants').select('competition_id, display_name, nickname')
     .eq('user_id', user!.id);
 
   const claimed = new Map((mine ?? []).map(p => [p.competition_id, p]));
 
   return (
     <>
-      <header className="mb-6 flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-              <path d="M2 16h6l3-8 5 16 4-11 3 3h7" stroke="currentColor" strokeWidth="2.4"
-                strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-sm font-medium tracking-tight">Pulso</span>
+      <section className="-mx-4 -mt-5 mb-5 bg-navy-grad px-4 pb-6 pt-6 text-white
+                          [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
+        <div className="mx-auto flex max-w-2xl items-start justify-between">
+          <div>
+            <Brand dark />
+            <h1 className="display mt-3 text-2xl leading-none">Competencias</h1>
+            <p className="mt-1.5 text-[13px] text-white/60">{user?.email}</p>
           </div>
-          <h1 className="mt-1.5 text-xl font-medium">Competencias activas</h1>
-          <p className="mt-0.5 text-sm text-ink-soft">{user?.email}</p>
+          <SignOut />
         </div>
-        <SignOut />
-      </header>
+      </section>
 
       {!competitions?.length ? (
         <Empty
-          title="Todavía no hay competencias"
+          title="Sin competencias activas"
           body="Cuando el administrador cree una, aparecerá aquí para que te sumes."
           action={<Link href="/admin" className="btn">Entrar como administrador</Link>}
         />
@@ -54,19 +48,18 @@ export default async function Home() {
             const me = claimed.get(c.id);
             return (
               <Link key={c.id} href={`/c/${c.id}`}
-                className="card block p-4 transition hover:bg-paper-sunk">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{c.name}</p>
-                    <p className="mt-0.5 text-xs text-ink-faint">
-                      Semana {week} · {formatWeekRange(c.start_date, week)}
-                    </p>
-                  </div>
-                  <span className={`chip shrink-0 ${me
-                    ? 'bg-teamB-soft text-teamB-ink' : 'bg-paper-sunk text-ink-soft'}`}>
-                    {me ? (me.nickname || me.display_name) : 'Sin asignar'}
-                  </span>
+                className="card flex items-center gap-3 p-4 transition hover:bg-ice-sunk">
+                <span className="team-bar bg-navy-800" />
+                <div className="min-w-0 flex-1">
+                  <p className="display truncate text-lg leading-tight">{c.name}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-ink-faint">
+                    Semana {week} · {formatWeekRange(c.start_date, week)}
+                  </p>
                 </div>
+                <span className={`chip shrink-0 ${me
+                  ? 'bg-win/15 text-win' : 'bg-ice-sunk text-ink-soft'}`}>
+                  {me ? 'Inscrito' : 'Elegir cupo'}
+                </span>
               </Link>
             );
           })}
@@ -74,7 +67,8 @@ export default async function Home() {
       )}
 
       <div className="mt-8 border-t border-line pt-4">
-        <Link href="/admin" className="text-[13px] text-ink-faint underline underline-offset-2">
+        <Link href="/admin"
+          className="text-[13px] font-medium text-ink-faint underline underline-offset-2">
           Panel de administración
         </Link>
       </div>

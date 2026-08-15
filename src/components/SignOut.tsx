@@ -7,7 +7,7 @@ export default function SignOut() {
   const router = useRouter();
   return (
     <button
-      className="text-[13px] text-ink-faint underline underline-offset-2"
+      className="rounded-lg bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/80 transition hover:bg-white/20"
       onClick={async () => {
         await createClient().auth.signOut();
         router.push('/login');

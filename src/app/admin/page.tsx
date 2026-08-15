@@ -33,13 +33,13 @@ export default async function AdminHome({
 
       <ErrorBanner message={searchParams.error} />
 
-      <h1 className="mb-1 text-xl font-medium">Panel de administración</h1>
+      <h1 className="display mb-1 text-2xl leading-none">Panel de administración</h1>
       <p className="mb-5 text-sm text-ink-soft">
         Crea competencias, arma los equipos y ajusta las reglas.
       </p>
 
       <section className="card mb-6 p-4">
-        <h2 className="mb-3 font-medium">Nueva competencia</h2>
+        <p className="eyebrow mb-3">Nueva competencia</p>
         <form action={createCompetition} className="space-y-3">
           <div>
             <label className="label" htmlFor="name">Nombre</label>
@@ -83,7 +83,7 @@ export default async function AdminHome({
       </section>
 
       <div className="mb-2.5 flex items-center justify-between">
-        <h2 className="font-medium">Competencias</h2>
+        <p className="eyebrow">Competencias</p>
         <Link href="/admin/deportes" className="text-[13px] text-ink-soft hover:text-ink">
           Catálogo de deportes
         </Link>
@@ -95,15 +95,15 @@ export default async function AdminHome({
         <ul className="space-y-2">
           {competitions.map(c => (
             <li key={c.id}>
-              <Link href={`/admin/${c.id}`} className="card flex items-center justify-between p-3.5 hover:bg-paper-sunk">
+              <Link href={`/admin/${c.id}`} className="card flex items-center justify-between p-3.5 transition hover:bg-ice-sunk">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{c.name}</p>
+                  <p className="display truncate text-base leading-tight">{c.name}</p>
                   <p className="mt-0.5 text-xs text-ink-faint">
                     Semana {weekNumberFor(c.start_date)} · metas {c.goal_sedentario}/{c.goal_avanzado}
                   </p>
                 </div>
                 <span className={`chip ${c.is_active
-                  ? 'bg-teamB-soft text-teamB-ink' : 'bg-paper-sunk text-ink-soft'}`}>
+                  ? 'bg-win/15 text-win' : 'bg-ice-sunk text-ink-soft'}`}>
                   {c.is_active ? 'Activa' : 'Cerrada'}
                 </span>
               </Link>
@@ -117,16 +117,16 @@ export default async function AdminHome({
 
 function Gate({ error }: { error?: string }) {
   return (
-    <div className="mx-auto max-w-sm pt-16">
-      <h1 className="text-xl font-medium">Panel de administración</h1>
-      <p className="mb-5 mt-1 text-sm text-ink-soft">
+    <div className="mx-auto max-w-sm pt-14 text-center">
+      <h1 className="display text-2xl leading-none">Panel de administración</h1>
+      <p className="mb-5 mt-2 text-sm text-ink-soft">
         Ingresa la clave compartida para gestionar competencias.
       </p>
       <ErrorBanner message={error} />
       <form action={login} className="space-y-3">
         <input name="passcode" type="password" className="field" placeholder="Clave"
           autoComplete="off" required />
-        <button className="btn btn-primary w-full">Entrar</button>
+        <button className="btn btn-primary w-full text-base">Entrar</button>
       </form>
       <div className="mt-4 text-center">
         <BackLink href="/">Volver a la app</BackLink>

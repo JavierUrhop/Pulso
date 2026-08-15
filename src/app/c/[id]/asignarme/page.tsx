@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
-import { BackLink, Avatar, CategoryChip, Empty } from '@/components/ui';
+import { BackLink, Empty } from '@/components/ui';
 import ClaimForm from './ClaimForm';
 import type { Team } from '@/lib/types';
 
@@ -17,9 +17,9 @@ export default async function Asignarme({ params }: { params: { id: string } }) 
     <>
       <BackLink href="/">Competencias</BackLink>
 
-      <header className="mb-5 mt-4">
-        <h1 className="text-xl font-medium">¿Quién eres?</h1>
-        <p className="mt-1 text-sm text-ink-soft">
+      <header className="mb-5 mt-3">
+        <h1 className="display text-2xl leading-none">¿Quién eres?</h1>
+        <p className="mt-2 text-sm text-ink-soft">
           Elige tu nombre de la lista. Ese cupo queda ligado a tu cuenta y nadie más podrá tomarlo.
         </p>
       </header>

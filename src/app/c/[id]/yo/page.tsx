@@ -1,7 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
-import { BackLink } from '@/components/ui';
 import ProfileForm from './ProfileForm';
+import SignOut from '@/components/SignOut';
+import { CategoryChip } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +11,29 @@ export default async function MiPerfil({ params }: { params: { id: string } }) {
   if (!data) notFound();
   if (!data.me) redirect(`/c/${params.id}/asignarme`);
 
+  const me = data.me;
+
   return (
     <>
-      <BackLink href={`/c/${params.id}`}>Volver</BackLink>
-      <h1 className="mb-1 mt-4 text-xl font-medium">Mi perfil</h1>
-      <p className="mb-5 text-sm text-ink-soft">
-        Equipo {data.me.team} · categoría {data.me.category}. Eso lo define el administrador.
+      <section className={`-mx-4 -mt-5 mb-5 px-4 pb-5 pt-6 text-white
+        [padding-top:calc(1.5rem+env(safe-area-inset-top))]
+        ${me.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`}>
+        <div className="mx-auto flex max-w-2xl items-start justify-between">
+          <div>
+            <h1 className="display text-2xl leading-none">Mi perfil</h1>
+            <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-white/70">
+              Equipo {me.team} · {me.category === 'sedentario' ? 'categoría base' : 'categoría avanzada'}
+            </p>
+          </div>
+          <SignOut />
+        </div>
+      </section>
+
+      <p className="mb-4 text-[13px] text-ink-soft">
+        Tu equipo y categoría los define el administrador. Aquí puedes ajustar cómo te ven los demás.
       </p>
-      <ProfileForm competitionId={params.id} participant={data.me} />
+
+      <ProfileForm competitionId={params.id} participant={me} />
     </>
   );
 }

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import { scoreWeek, currentStreak } from '@/lib/scoring';
 import { DAY_NAMES, formatWeekRange } from '@/lib/week';
-import { Avatar, CategoryChip, ProgressBar, BackLink, Stat } from '@/components/ui';
+import { Avatar, CategoryChip, ProgressBar, Stat } from '@/components/ui';
 import WildcardButton from '@/components/WildcardButton';
 
 export const dynamic = 'force-dynamic';
@@ -26,72 +26,109 @@ export default async function ParticipantDetail({
     .filter(w => w.participant_id === p.id && w.week_number === week)
     .sort((a, b) => a.day_of_week - b.day_of_week);
 
-  const wildcardUsed = wildcards.filter(w => w.participant_id === p.id);
+  const used = wildcards.filter(w => w.participant_id === p.id);
   const isMe = me?.id === p.id;
   const streak = currentStreak(competition, p, week, workouts, goals);
+  const seasonTotal = Array.from({ length: currentWeek }, (_, i) => i + 1)
+    .reduce((sum, wk) => {
+      const r = scoreWeek(competition, participants, workouts, wildcards, goals, wk)
+        .scores.find(x => x.participantId === p.id);
+      return sum + (r && r.counts ? r.total : 0);
+    }, 0);
 
   return (
     <>
-      <BackLink href={`/c/${params.id}?semana=${week}`}>Volver</BackLink>
+      <section className={`-mx-4 -mt-5 mb-4 px-4 pb-5 pt-5 text-white
+        [padding-top:calc(1.25rem+env(safe-area-inset-top))]
+        ${p.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`}>
+        <div className="mx-auto max-w-2xl">
+          <Link href={`/c/${params.id}?semana=${week}`}
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-white/75 hover:text-white">
+            <span aria-hidden>←</span>Marcador
+          </Link>
 
-      <header className="mb-5 mt-4 flex items-center gap-3">
-        <Avatar url={p.avatar_url} name={p.display_name} size={48} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{p.nickname || p.display_name}</p>
-          <p className="mt-0.5 flex items-center gap-2 text-xs text-ink-faint">
-            Equipo {p.team} · meta {s.goal}/sem
-            <CategoryChip category={p.category} />
-          </p>
+          <div className="mt-4 flex items-center gap-3.5">
+            <Avatar url={p.avatar_url} name={p.display_name} size={60} />
+            <div className="min-w-0 flex-1">
+              <h1 className="display truncate text-2xl leading-none">
+                {p.nickname || p.display_name}
+              </h1>
+              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.1em] text-white/70">
+                Equipo {p.team} · meta {s.goal}/sem
+              </p>
+            </div>
+            {isMe && (
+              <Link href={`/c/${params.id}/yo`}
+                className="rounded-lg bg-white/15 px-3 py-1.5 text-[12px] font-semibold hover:bg-white/25">
+                Editar
+              </Link>
+            )}
+          </div>
+
+          <div className="mt-4 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/60">Semana {week}</p>
+              <p className="score font-display text-4xl font-bold leading-none">
+                {s.usedWildcard ? '—' : s.total}
+                <span className="ml-1 text-sm font-semibold text-white/60">pts</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/60">Temporada</p>
+              <p className="score font-display text-2xl font-bold leading-none">{seasonTotal}</p>
+            </div>
+          </div>
+
+          {!s.usedWildcard && (
+            <div className="mt-3">
+              <div className="flex gap-[3px]">
+                {Array.from({ length: competition.max_weekly }, (_, i) => {
+                  const slot = i + 1;
+                  const on = slot <= s.workoutCount;
+                  const over = on && slot > s.goal;
+                  return (
+                    <div key={i} className={`h-2 flex-1 rounded-[3px] ${
+                      over ? 'bg-white' : on ? 'bg-white/85' : 'bg-white/25'
+                    } ${slot === s.goal ? 'ring-1 ring-inset ring-white/70' : ''}`} />
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-[11px] text-white/70">
+                {s.workoutCount} de {competition.max_weekly} · meta {s.goal}
+                {s.exceededGoal && ' · meta superada'}
+              </p>
+            </div>
+          )}
         </div>
-        {isMe && (
-          <Link href={`/c/${params.id}/yo`} className="btn h-9 px-3 text-[13px]">Editar perfil</Link>
-        )}
-      </header>
+      </section>
 
       <div className="mb-4 grid grid-cols-4 gap-2">
         <Stat label="Entrenos" value={s.workoutCount} />
-        <Stat label="Meta" value={s.goalBonus ? `+${s.goalBonus}` : '—'} />
-        <Stat label="Superó" value={s.exceededBonus ? `+${s.exceededBonus}` : '—'} />
-        <Stat label="Equipo" value={s.sweepBonus ? `+${s.sweepBonus}` : '—'} />
+        <Stat label="Meta" value={s.goalBonus ? `+${s.goalBonus}` : '—'} tone={s.goalBonus ? 'win' : 'plain'} />
+        <Stat label="Superó" value={s.exceededBonus ? `+${s.exceededBonus}` : '—'} tone={s.exceededBonus ? 'win' : 'plain'} />
+        <Stat label="Equipo" value={s.sweepBonus ? `+${s.sweepBonus}` : '—'} tone={s.sweepBonus ? 'win' : 'plain'} />
       </div>
 
-      <div className="card mb-4 p-4">
-        <div className="mb-2 flex items-baseline justify-between">
-          <p className="text-sm text-ink-soft">Total semana {week}</p>
-          <p className="text-2xl font-medium tabular-nums">
-            {s.usedWildcard ? '—' : `${s.total} pts`}
-          </p>
-        </div>
-        {!s.usedWildcard && (
-          <ProgressBar count={s.workoutCount} goal={s.goal}
-            maxWeekly={competition.max_weekly} team={p.team} />
-        )}
-        {streak > 0 && !s.usedWildcard && (
-          <p className="mt-2.5 text-xs text-ink-faint">
-            Lleva {streak} {streak === 1 ? 'semana' : 'semanas'} igualando la meta.
-            {' '}Con {competition.streak_to_raise} seguidas, sube a {s.goal + 1}.
-          </p>
-        )}
-      </div>
+      {streak > 0 && !s.usedWildcard && (
+        <p className="mb-4 rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[13px] text-ink-soft">
+          <span className="font-semibold text-ink">Racha de {streak}</span>
+          {' '}{streak === 1 ? 'semana' : 'semanas'} igualando la meta.
+          Con {competition.streak_to_raise} seguidas sube a {s.goal + 1}.
+        </p>
+      )}
 
       <div className="mb-2.5 flex items-center justify-between">
-        <p className="text-sm font-medium">
-          Bitácora · {formatWeekRange(competition.start_date, week)}
-        </p>
+        <p className="eyebrow">Bitácora · {formatWeekRange(competition.start_date, week)}</p>
         {isMe && week === currentWeek && (
-          <WildcardButton
-            competitionId={params.id}
-            participantId={p.id}
-            weekNumber={week}
+          <WildcardButton competitionId={params.id} participantId={p.id} weekNumber={week}
             alreadyUsedThisWeek={s.usedWildcard}
-            remaining={competition.wildcards_per_person - wildcardUsed.length}
-          />
+            remaining={competition.wildcards_per_person - used.length} />
         )}
       </div>
 
       {s.usedWildcard ? (
         <div className="card p-6 text-center">
-          <p className="text-sm font-medium">Comodín aplicado en esta semana</p>
+          <p className="display text-base">Comodín aplicado</p>
           <p className="mx-auto mt-1 max-w-xs text-[13px] text-ink-soft">
             No suma ni resta puntos, y el promedio del equipo se calcula sin esta persona.
           </p>
@@ -104,39 +141,39 @@ export default async function ParticipantDetail({
         <ul className="space-y-2">
           {log.map(w => (
             <li key={w.id} className="card flex items-center gap-3 p-2.5">
+              <span className={`team-bar ${p.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
               {w.photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <a href={w.photo_url} target="_blank" rel="noreferrer" className="shrink-0">
                   <img src={w.photo_url} alt={`Registro de ${w.sport}`}
-                    className="h-12 w-12 rounded-lg object-cover" />
+                    className="h-14 w-14 rounded-lg object-cover" />
                 </a>
               ) : (
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-paper-sunk text-[10px] text-ink-faint">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-ice-sunk
+                                text-[9px] font-semibold uppercase tracking-wide text-ink-faint">
                   sin foto
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium">
-                  {DAY_NAMES[w.day_of_week - 1]} · {w.sport}
-                </p>
-                <p className="mt-0.5 text-xs text-ink-faint">
-                  {w.note || new Date(w.created_at).toLocaleString('es-CL', {
-                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-                  })}
-                </p>
+                <p className="display text-[13px] leading-tight">{DAY_NAMES[w.day_of_week - 1]}</p>
+                <p className="truncate text-sm font-medium">{w.sport}</p>
+                {w.note && <p className="truncate text-[11px] text-ink-faint">{w.note}</p>}
               </div>
-              <span className="shrink-0 text-xs text-win">+1</span>
+              <span className="score shrink-0 rounded-md bg-win/12 px-2 py-1 text-xs font-bold text-win">
+                +1
+              </span>
             </li>
           ))}
         </ul>
       )}
 
       {currentWeek > 1 && (
-        <div className="mt-5 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-1.5">
           {Array.from({ length: currentWeek }, (_, i) => i + 1).map(w => (
             <Link key={w} href={`/c/${params.id}/p/${p.id}?semana=${w}`}
-              className={`rounded-md px-2.5 py-1 text-xs ${w === week
-                ? 'bg-ink text-white' : 'bg-paper-sunk text-ink-soft hover:bg-line'}`}>
+              className={`score rounded-lg px-3 py-1.5 text-xs font-bold ${w === week
+                ? 'bg-navy-800 text-white'
+                : 'border border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
               S{w}
             </Link>
           ))}

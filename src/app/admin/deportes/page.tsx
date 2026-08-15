@@ -20,7 +20,7 @@ export default async function Deportes({
     <>
       <BackLink href="/admin">Panel</BackLink>
       <ErrorBanner message={searchParams.error} />
-      <h1 className="mb-1 mt-4 text-xl font-medium">Catálogo de deportes</h1>
+      <h1 className="display mb-1 mt-3 text-2xl leading-none">Catálogo de deportes</h1>
       <p className="mb-5 text-sm text-ink-soft">
         Esta lista alimenta el desplegable del formulario de registro.
       </p>
@@ -46,7 +46,7 @@ export default async function Deportes({
             <form action={toggleSport}>
               <input type="hidden" name="id" value={s.id} />
               <input type="hidden" name="is_active" value={String(!s.is_active)} />
-              <button className="text-xs text-ink-soft underline underline-offset-2">
+              <button className="text-xs font-medium text-ink-soft underline underline-offset-2">
                 {s.is_active ? 'ocultar' : 'activar'}
               </button>
             </form>

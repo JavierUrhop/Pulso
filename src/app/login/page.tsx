@@ -42,16 +42,18 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto max-w-sm pt-10">
-      <div className="mb-1 flex items-center gap-2">
-        <PulseMark />
-        <h1 className="text-2xl font-medium tracking-tight">Pulso</h1>
+    <div className="mx-auto max-w-sm pt-8">
+      <div className="mb-6 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon-192.png" alt="" width={72} height={72}
+          className="mx-auto rounded-2xl shadow-lift" />
+        <h1 className="display mt-4 text-3xl leading-none tracking-[0.06em]">Pulso</h1>
       </div>
-      <p className="mt-1 text-sm text-ink-soft">
+      <p className="text-center text-sm text-ink-soft">
         {mode === 'login' ? 'Entra con tu cuenta.' : 'Crea tu cuenta para participar.'}
       </p>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-7 space-y-4">
         <div>
           <label className="label" htmlFor="email">Correo</label>
           <input id="email" type="email" className="field" value={email}
@@ -67,31 +69,28 @@ function LoginForm() {
             onKeyDown={e => e.key === 'Enter' && submit()} />
         </div>
 
-        {error && <p className="text-[13px] text-red-700">{error}</p>}
-        {notice && <p className="text-[13px] text-ink-soft">{notice}</p>}
+        {error && (
+          <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[13px] text-teamA-ink">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[13px] text-ink-soft">
+            {notice}
+          </p>
+        )}
 
-        <button className="btn btn-primary w-full" onClick={submit} disabled={busy}>
+        <button className="btn btn-primary w-full text-base" onClick={submit} disabled={busy}>
           {busy ? 'Un momento…' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
         </button>
 
         <button
-          className="w-full text-[13px] text-ink-soft underline underline-offset-2"
+          className="w-full text-[13px] font-medium text-ink-soft underline underline-offset-2"
           onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); }}>
           {mode === 'login' ? 'No tengo cuenta, quiero registrarme' : 'Ya tengo cuenta'}
         </button>
       </div>
     </div>
-  );
-}
-
-/** Marca: una línea de electrocardiograma con un latido. */
-function PulseMark() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <path d="M2 16h6l3-8 5 16 4-11 3 3h7"
-        stroke="currentColor" strokeWidth="2.2"
-        strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 

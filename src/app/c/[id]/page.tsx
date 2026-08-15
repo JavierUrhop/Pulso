@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import { scoreWeek, currentStreak } from '@/lib/scoring';
 import { formatWeekRange } from '@/lib/week';
-import { Avatar, ProgressBar, CategoryChip, BackLink } from '@/components/ui';
+import { Avatar, ProgressBar, Brand } from '@/components/ui';
 import type { Team } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -15,76 +15,88 @@ export default async function Dashboard({
   if (!data) notFound();
 
   const { competition, participants, workouts, wildcards, goals, me, currentWeek } = data;
-
-  // Sin cupo reclamado -> primero hay que elegir quién eres.
   if (!me) redirect(`/c/${params.id}/asignarme`);
 
   const week = Math.min(Math.max(Number(searchParams.semana) || currentWeek, 1), currentWeek);
-  const { scores, teams } = scoreWeek(
-    competition, participants, workouts, wildcards, goals, week,
-  );
+  const { scores, teams } = scoreWeek(competition, participants, workouts, wildcards, goals, week);
   const scoreOf = new Map(scores.map(s => [s.participantId, s]));
 
-  // Aviso: quién está a una semana de que le suba la meta.
+  const leader: Team | null =
+    teams.A.perCapita === teams.B.perCapita ? null
+      : teams.A.perCapita > teams.B.perCapita ? 'A' : 'B';
+  const diff = Math.abs(teams.A.perCapita - teams.B.perCapita).toFixed(1);
+
   const aboutToRaise = participants
     .filter(p => p.is_active)
-    .map(p => ({
-      p,
-      streak: currentStreak(competition, p, week, workouts, goals),
-    }))
+    .map(p => ({ p, streak: currentStreak(competition, p, week, workouts, goals) }))
     .filter(x => x.streak === competition.streak_to_raise - 1);
-
-  const leader: Team | null =
-    teams.A.perCapita === teams.B.perCapita ? null : teams.A.perCapita > teams.B.perCapita ? 'A' : 'B';
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <BackLink href="/">Competencias</BackLink>
-        <Link href={`/c/${params.id}/temporada`} className="text-sm text-ink-soft hover:text-ink">
-          Temporada completa
-        </Link>
-      </div>
+      {/* Cabecera tipo marcador */}
+      <section className="-mx-4 -mt-5 mb-4 bg-navy-grad px-4 pb-5 pt-6 text-white
+                          [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-center justify-between">
+            <Link href="/"><Brand dark /></Link>
+            <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]">
+              Semana {week}
+            </span>
+          </div>
 
-      <header className="mb-5">
-        <p className="text-xs text-ink-faint">
-          Semana {week} de {currentWeek} · {formatWeekRange(competition.start_date, week)}
-        </p>
-        <h1 className="mt-0.5 text-xl font-medium">{competition.name}</h1>
-      </header>
+          <p className="mt-4 text-center text-[11px] uppercase tracking-[0.16em] text-white/60">
+            {competition.name} · {formatWeekRange(competition.start_date, week)}
+          </p>
 
-      {/* Marcador */}
-      <div className="card mb-3 p-5">
-        <div className="flex items-center">
-          {(['A', 'B'] as Team[]).map((t, i) => (
-            <div key={t} className={`flex-1 text-center ${i === 0 ? 'border-r border-line' : ''}`}>
-              <p className="text-[13px] text-ink-soft">Equipo {t}</p>
-              <p className={`mt-1 text-3xl font-medium tabular-nums ${
-                leader === t ? (t === 'A' ? 'text-teamA' : 'text-teamB') : ''}`}>
-                {teams[t].perCapita.toFixed(1)}
-              </p>
-              <p className="mt-0.5 text-[11px] text-ink-faint">
-                pts per cápita · {teams[t].activeMembers} activos
-              </p>
-              {teams[t].sweep && (
-                <p className="mt-1 text-[11px] font-medium text-win">Equipo completo en meta +{competition.bonus_team_sweep}</p>
-              )}
-            </div>
-          ))}
+          <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            {(['A', 'B'] as Team[]).map((t, i) => (
+              <div key={t} className={i === 1 ? 'order-3' : ''}>
+                <div className={`mx-auto mb-1.5 h-1 w-10 rounded-full ${
+                  t === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
+                <p className="display text-center text-sm tracking-[0.14em] text-white/70">
+                  Equipo {t}
+                </p>
+                <p className={`score text-center font-display text-5xl font-bold leading-none
+                  ${leader === t ? 'text-white' : 'text-white/55'}`}>
+                  {teams[t].perCapita.toFixed(1)}
+                </p>
+                <p className="mt-1 text-center text-[10px] uppercase tracking-[0.1em] text-white/45">
+                  {teams[t].activeMembers} activos
+                </p>
+              </div>
+            ))}
+            <span className="order-2 display text-xs text-white/40">vs</span>
+          </div>
+
+          <p className="mt-3 text-center text-[11px] text-white/60">
+            {leader
+              ? `Equipo ${leader} adelante por ${diff} puntos per cápita`
+              : 'Empate técnico esta semana'}
+          </p>
         </div>
-      </div>
+      </section>
 
-      {aboutToRaise.length > 0 && (
-        <div className="mb-4 rounded-lg border-l-2 border-ink/30 bg-paper-sunk px-4 py-3">
-          <p className="text-[13px] text-ink-soft">
-            <span className="font-medium text-ink">A un paso de subir la meta: </span>
-            {aboutToRaise.map(x => x.p.nickname || x.p.display_name).join(', ')}
-            {' '}— si vuelven a igualar su meta esta semana, sube en 1.
+      {(teams.A.sweep || teams.B.sweep) && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-win/25 bg-win/10 px-3.5 py-2.5">
+          <span className="text-base" aria-hidden>🏆</span>
+          <p className="text-[13px] font-medium text-ink">
+            {[teams.A.sweep && 'Equipo A', teams.B.sweep && 'Equipo B'].filter(Boolean).join(' y ')}
+            {' '}con todos en meta · +{competition.bonus_team_sweep} a cada integrante
           </p>
         </div>
       )}
 
-      {/* Equipos */}
+      {aboutToRaise.length > 0 && (
+        <div className="mb-3 rounded-xl border border-line bg-ice-card px-3.5 py-2.5">
+          <p className="eyebrow mb-0.5">Meta a punto de subir</p>
+          <p className="text-[13px] text-ink-soft">
+            {aboutToRaise.map(x => x.p.nickname || x.p.display_name).join(', ')}
+            {' '}— una semana más igualando y su meta sube en 1.
+          </p>
+        </div>
+      )}
+
+      {/* Planteles */}
       <div className="space-y-3">
         {(['A', 'B'] as Team[]).map(team => {
           const roster = participants
@@ -92,49 +104,53 @@ export default async function Dashboard({
             .sort((a, b) => (scoreOf.get(b.id)?.total ?? 0) - (scoreOf.get(a.id)?.total ?? 0));
 
           return (
-            <section key={team} className="card p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${team === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
-                <h2 className="flex-1 font-medium">Equipo {team}</h2>
-                <span className="text-xs text-ink-faint">{roster.length} integrantes</span>
-              </div>
+            <section key={team} className="card overflow-hidden">
+              <header className={`flex items-center gap-2.5 px-4 py-2.5 ${
+                team === 'A' ? 'bg-teamA-soft' : 'bg-teamB-soft'}`}>
+                <span className={`h-5 w-1 rounded-full ${team === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
+                <h2 className={`display flex-1 text-base ${
+                  team === 'A' ? 'text-teamA-ink' : 'text-teamB-ink'}`}>Equipo {team}</h2>
+                <span className="score text-[11px] font-bold text-ink-soft">
+                  {teams[team].totalPoints} pts · {roster.length} jugadores
+                </span>
+              </header>
 
               <ul className="divide-y divide-line">
-                {roster.map(p => {
+                {roster.map((p, idx) => {
                   const s = scoreOf.get(p.id)!;
                   return (
                     <li key={p.id}>
                       <Link href={`/c/${params.id}/p/${p.id}?semana=${week}`}
-                        className="flex items-center gap-3 py-2.5 -mx-1 px-1 rounded-lg hover:bg-paper-sunk">
-                        <Avatar url={p.avatar_url} name={p.display_name} size={34} />
+                        className="flex items-center gap-3 px-3 py-2.5 transition hover:bg-ice-sunk">
+                        <span className="score w-4 text-center text-[11px] font-bold text-ink-faint">
+                          {idx + 1}
+                        </span>
+                        <Avatar url={p.avatar_url} name={p.display_name} size={36} />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate text-sm font-semibold">
                               {p.nickname || p.display_name}
                             </p>
-                            {p.id === me.id && (
-                              <span className="chip bg-ink text-white">Tú</span>
-                            )}
+                            {p.id === me.id && <span className="chip bg-navy-800 text-white">Tú</span>}
                           </div>
                           {s.usedWildcard ? (
-                            <p className="mt-1 text-[11px] text-ink-faint">
-                              Comodín usado · no afecta al equipo
+                            <p className="mt-1 text-[11px] font-medium text-ink-faint">
+                              Comodín · fuera del cálculo
                             </p>
                           ) : (
-                            <div className="mt-1.5">
+                            <div className="mt-1.5 flex items-center gap-2">
                               <ProgressBar count={s.workoutCount} goal={s.goal}
-                                maxWeekly={competition.max_weekly} team={team} />
+                                maxWeekly={competition.max_weekly} team={team} size="sm" />
+                              <span className="score shrink-0 text-[10px] font-bold text-ink-faint">
+                                {s.workoutCount}/{s.goal}
+                              </span>
                             </div>
                           )}
                         </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-sm font-medium tabular-nums">
-                            {s.usedWildcard ? '—' : `${s.total} pts`}
-                          </p>
-                          <p className="text-[11px] text-ink-faint tabular-nums">
-                            meta {s.goal}
-                          </p>
-                        </div>
+                        <span className={`score shrink-0 font-display text-lg font-bold ${
+                          s.usedWildcard ? 'text-ink-faint' : ''}`}>
+                          {s.usedWildcard ? '—' : s.total}
+                        </span>
                       </Link>
                     </li>
                   );
@@ -145,25 +161,20 @@ export default async function Dashboard({
         })}
       </div>
 
-      {/* Selector de semana */}
       {currentWeek > 1 && (
-        <div className="mt-5 flex flex-wrap gap-1.5">
-          {Array.from({ length: currentWeek }, (_, i) => i + 1).map(w => (
-            <Link key={w} href={`/c/${params.id}?semana=${w}`}
-              className={`rounded-md px-2.5 py-1 text-xs ${w === week
-                ? 'bg-ink text-white' : 'bg-paper-sunk text-ink-soft hover:bg-line'}`}>
-              S{w}
-            </Link>
-          ))}
+        <div className="mt-4">
+          <p className="eyebrow mb-2">Historial</p>
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from({ length: currentWeek }, (_, i) => i + 1).map(w => (
+              <Link key={w} href={`/c/${params.id}?semana=${w}`}
+                className={`score rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  w === week ? 'bg-navy-800 text-white'
+                    : 'border border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
+                S{w}
+              </Link>
+            ))}
+          </div>
         </div>
-      )}
-
-      {/* Botón flotante de registro */}
-      {week === currentWeek && (
-        <Link href={`/c/${params.id}/registrar`}
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 btn btn-primary shadow-lg shadow-ink/10">
-          Registrar entrenamiento
-        </Link>
       )}
     </>
   );

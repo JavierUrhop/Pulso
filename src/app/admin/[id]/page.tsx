@@ -38,14 +38,14 @@ export default async function AdminCompetition({
     <>
       <BackLink href="/admin">Panel</BackLink>
       <ErrorBanner message={searchParams.error} />
-      <h1 className="mb-1 mt-4 text-xl font-medium">{c.name}</h1>
+      <h1 className="display mb-1 mt-3 text-2xl leading-none">{c.name}</h1>
       <p className="mb-6 text-sm text-ink-soft">
         Semana {currentWeek} · {participants.filter(p => p.is_active).length} integrantes activos
       </p>
 
       {/* Reglas */}
       <section className="card mb-6 p-4">
-        <h2 className="mb-3 font-medium">Reglas y metas base</h2>
+        <p className="eyebrow mb-3">Reglas y metas base</p>
         <form action={updateCompetition} className="space-y-3">
           <input type="hidden" name="id" value={c.id} />
           <div>
@@ -73,7 +73,7 @@ export default async function AdminCompetition({
 
       {/* Agregar integrante */}
       <section className="card mb-4 p-4">
-        <h2 className="mb-3 font-medium">Agregar integrante</h2>
+        <p className="eyebrow mb-3">Agregar integrante</p>
         <form action={addParticipant} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="competition_id" value={c.id} />
           <div className="min-w-[160px] flex-1">
@@ -93,7 +93,7 @@ export default async function AdminCompetition({
       </section>
 
       {/* Integrantes */}
-      <h2 className="mb-2.5 font-medium">Integrantes</h2>
+      <p className="eyebrow mb-2.5">Integrantes</p>
       <ul className="mb-6 space-y-2">
         {participants.map(p => (
           <li key={p.id} className="card p-3">
@@ -155,7 +155,7 @@ export default async function AdminCompetition({
               <form action={deleteParticipant}>
                 <input type="hidden" name="id" value={p.id} />
                 <input type="hidden" name="competition_id" value={c.id} />
-                <button className="btn h-8 px-2.5 text-xs text-red-700">Eliminar</button>
+                <button className="btn h-8 px-2.5 text-xs text-teamA">Eliminar</button>
               </form>
             </div>
 
@@ -175,7 +175,7 @@ export default async function AdminCompetition({
       {/* Comodines */}
       {wildcards.length > 0 && (
         <>
-          <h2 className="mb-2.5 font-medium">Comodines usados</h2>
+          <p className="eyebrow mb-2.5">Comodines usados</p>
           <ul className="mb-6 space-y-1.5">
             {wildcards.map(w => (
               <li key={w.id} className="card flex items-center justify-between p-2.5 text-[13px]">
@@ -183,7 +183,7 @@ export default async function AdminCompetition({
                 <form action={deleteWildcard}>
                   <input type="hidden" name="wildcard_id" value={w.id} />
                   <input type="hidden" name="competition_id" value={c.id} />
-                  <button className="text-xs text-red-700 underline underline-offset-2">anular</button>
+                  <button className="text-xs font-medium text-teamA underline underline-offset-2">anular</button>
                 </form>
               </li>
             ))}
@@ -192,7 +192,7 @@ export default async function AdminCompetition({
       )}
 
       {/* Registros recientes */}
-      <h2 className="mb-2.5 font-medium">Últimos registros</h2>
+      <p className="eyebrow mb-2.5">Últimos registros</p>
       {workouts.length === 0 ? (
         <p className="card p-5 text-center text-sm text-ink-soft">Sin registros todavía.</p>
       ) : (
@@ -205,7 +205,7 @@ export default async function AdminCompetition({
                   <img src={w.photo_url} alt="" className="h-9 w-9 rounded object-cover" />
                 </a>
               ) : (
-                <div className="h-9 w-9 rounded bg-paper-sunk" />
+                <div className="h-9 w-9 rounded bg-ice-sunk" />
               )}
               <div className="min-w-0 flex-1 text-[13px]">
                 <p className="truncate font-medium">{nameOf.get(w.participant_id) ?? '—'}</p>
@@ -216,7 +216,7 @@ export default async function AdminCompetition({
               <form action={deleteWorkout}>
                 <input type="hidden" name="workout_id" value={w.id} />
                 <input type="hidden" name="competition_id" value={c.id} />
-                <button className="text-xs text-red-700 underline underline-offset-2">borrar</button>
+                <button className="text-xs font-medium text-teamA underline underline-offset-2">borrar</button>
               </form>
             </li>
           ))}

@@ -19,10 +19,10 @@ export default function WildcardButton({
   const [error, setError] = useState<string | null>(null);
 
   if (alreadyUsedThisWeek) {
-    return <span className="text-xs text-ink-faint">Comodín activo</span>;
+    return <span className="chip bg-ice-sunk text-ink-soft">Comodín activo</span>;
   }
   if (remaining <= 0) {
-    return <span className="text-xs text-ink-faint">Sin comodines</span>;
+    return <span className="chip bg-ice-sunk text-ink-faint">Sin comodines</span>;
   }
 
   async function use() {
@@ -58,7 +58,7 @@ export default function WildcardButton({
           {busy ? '…' : 'Confirmar'}
         </button>
       </div>
-      {error && <span className="text-xs text-red-700">{error}</span>}
+      {error && <span className="text-xs text-teamA">{error}</span>}
     </div>
   );
 }

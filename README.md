@@ -90,3 +90,24 @@ Cubre 24 casos: bonos, topes, comodín, per cápita, escalado de metas y acumula
 - Exportar la temporada a planilla
 - Historial de rachas y récords personales
 - Roles reales por cuenta en vez de clave compartida (ver el final de SETUP.md)
+
+## Identidad visual
+
+**Colores.** Azul marino (`navy`) para la interfaz, rojo para el Equipo A y azul para el Equipo B, verde para lo que supera la meta. Todo vive en `tailwind.config.ts`; cambiar un equipo de color es una línea.
+
+**Tipografía.** Los títulos usan la clase `.display`: condensada, en mayúsculas, tipo camiseta deportiva. La pila de fuentes empieza por Barlow Condensed y cae en Arial Narrow, que ya existe en Windows y Mac. Si quieres la fuente exacta en todos los dispositivos, agrega en `layout.tsx`:
+
+```ts
+import { Barlow_Condensed } from 'next/font/google';
+const display = Barlow_Condensed({ subsets: ['latin'], weight: ['600','700','800'], variable: '--font-display' });
+```
+
+y suma `${display.variable}` a la clase del `<html>`, más `'var(--font-display)'` al inicio de `fontFamily.display` en Tailwind.
+
+**Íconos.** Se generan todos desde una sola imagen:
+
+```bash
+python3 scripts/generate-icons.py
+```
+
+Lee `assets/icon-master.png` y produce en `public/`: `apple-touch-icon.png` (iPhone), `icon-192.png` e `icon-512.png` (Android/PWA), `favicon-32.png` (pestaña) y `og-image.png` (vista previa al compartir). Para cambiar el ícono, reemplaza el archivo maestro por otro cuadrado de 1024×1024 y vuelve a correr el script.

@@ -18,8 +18,7 @@ export default function ProfileForm({
   const [saved, setSaved] = useState(false);
 
   async function uploadAvatar(file: File) {
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     const supabase = createClient();
     const ext = file.name.split('.').pop() || 'jpg';
     const path = `${competitionId}/${participant.id}-${Date.now()}.${ext}`;
@@ -39,11 +38,9 @@ export default function ProfileForm({
 
   async function save() {
     if (!name.trim()) return setError('El nombre no puede quedar vacío.');
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     const { error } = await createClient().from('participants').update({
-      display_name: name.trim(),
-      nickname: nickname.trim() || null,
+      display_name: name.trim(), nickname: nickname.trim() || null,
     }).eq('id', participant.id);
 
     setBusy(false);
@@ -53,14 +50,17 @@ export default function ProfileForm({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Avatar url={avatar} name={name} size={64} />
-        <label className="btn cursor-pointer">
-          {avatar ? 'Cambiar foto' : 'Subir foto'}
-          <input type="file" accept="image/*" className="hidden" disabled={busy}
-            onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
-        </label>
+    <div className="space-y-5">
+      <div className="card flex items-center gap-4 p-4">
+        <Avatar url={avatar} name={name} size={68} ring={participant.team} />
+        <div>
+          <label className="btn cursor-pointer">
+            {avatar ? 'Cambiar foto' : 'Subir foto'}
+            <input type="file" accept="image/*" className="hidden" disabled={busy}
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
+          </label>
+          <p className="mt-1.5 text-[11px] text-ink-faint">Así te ve el resto del equipo.</p>
+        </div>
       </div>
 
       <div>
@@ -70,14 +70,22 @@ export default function ProfileForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="nick">Apodo <span className="text-ink-faint">(opcional)</span></label>
+        <label className="label" htmlFor="nick">Apodo (opcional)</label>
         <input id="nick" className="field" value={nickname} maxLength={30}
           onChange={e => { setNickname(e.target.value); setSaved(false); }}
           placeholder="Como quieres que te vean" />
       </div>
 
-      {error && <p className="text-[13px] text-red-700">{error}</p>}
-      {saved && <p className="text-[13px] text-ink-soft">Cambios guardados.</p>}
+      {error && (
+        <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[13px] text-teamA-ink">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p className="rounded-xl border border-win/25 bg-win/10 px-3.5 py-2.5 text-[13px] text-win">
+          Cambios guardados.
+        </p>
+      )}
 
       <button className="btn btn-primary w-full" onClick={save} disabled={busy}>
         {busy ? 'Guardando…' : 'Guardar cambios'}

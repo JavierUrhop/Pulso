@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import { scoreSeason } from '@/lib/scoring';
-import { Avatar, ProgressBar, BackLink, Stat } from '@/components/ui';
+import { Avatar, ProgressBar } from '@/components/ui';
 import type { Team } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+const MEDAL = ['🥇', '🥈', '🥉'];
 
 export default async function Temporada({
   params, searchParams,
@@ -17,13 +19,9 @@ export default async function Temporada({
   const season = scoreSeason(competition, participants, workouts, wildcards, goals, currentWeek);
 
   const filter = (searchParams.equipo === 'A' || searchParams.equipo === 'B')
-    ? searchParams.equipo as Team : null;
+    ? (searchParams.equipo as Team) : null;
 
-  const maxPerCapita = Math.max(
-    1,
-    ...season.weeks.flatMap(w => [w.teams.A.perCapita, w.teams.B.perCapita]),
-  );
-
+  const maxPC = Math.max(1, ...season.weeks.flatMap(w => [w.teams.A.perCapita, w.teams.B.perCapita]));
   const lastWeek = season.weeks[season.weeks.length - 1];
   const lastScores = new Map(lastWeek.scores.map(s => [s.participantId, s]));
 
@@ -32,37 +30,57 @@ export default async function Temporada({
     .map(p => ({ p, total: season.participantTotals.get(p.id) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 
+  const leader: Team | null = season.teamTotals.A === season.teamTotals.B ? null
+    : season.teamTotals.A > season.teamTotals.B ? 'A' : 'B';
+
   return (
     <>
-      <BackLink href={`/c/${params.id}`}>Volver</BackLink>
-      <h1 className="mb-4 mt-4 text-xl font-medium">
-        Temporada completa · {currentWeek} {currentWeek === 1 ? 'semana' : 'semanas'}
-      </h1>
+      <section className="-mx-4 -mt-5 mb-4 bg-navy-grad px-4 pb-5 pt-6 text-white
+                          [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
+        <div className="mx-auto max-w-2xl">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-white/60">
+            {currentWeek} {currentWeek === 1 ? 'semana' : 'semanas'} jugadas
+          </p>
+          <h1 className="display mt-1 text-2xl leading-none">Temporada</h1>
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5">
-        <Stat label="Equipo A acumulado" value={season.teamTotals.A.toFixed(1)} sub="suma per cápita" />
-        <Stat label="Equipo B acumulado" value={season.teamTotals.B.toFixed(1)} sub="suma per cápita" />
-      </div>
-
-      {/* Gráfico de barras por semana */}
-      <section className="card mb-5 p-4">
-        <p className="mb-3 text-sm font-medium">Per cápita por semana</p>
-        <div className="flex items-end gap-2" style={{ height: 96 }}>
-          {season.weeks.map(w => (
-            <div key={w.week} className="flex flex-1 flex-col items-center gap-1">
-              <div className="flex h-full w-full items-end justify-center gap-[3px]">
-                <div className="w-1/2 rounded-sm bg-teamA"
-                  style={{ height: `${Math.max(3, (w.teams.A.perCapita / maxPerCapita) * 100)}%` }}
-                  title={`Equipo A: ${w.teams.A.perCapita.toFixed(1)}`} />
-                <div className="w-1/2 rounded-sm bg-teamB"
-                  style={{ height: `${Math.max(3, (w.teams.B.perCapita / maxPerCapita) * 100)}%` }}
-                  title={`Equipo B: ${w.teams.B.perCapita.toFixed(1)}`} />
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {(['A', 'B'] as Team[]).map(t => (
+              <div key={t} className={`rounded-xl2 p-3 ${
+                leader === t ? 'bg-white/15' : 'bg-white/[0.07]'}`}>
+                <div className="flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${t === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
+                  <p className="display text-xs tracking-[0.12em] text-white/70">Equipo {t}</p>
+                </div>
+                <p className="score mt-1 font-display text-3xl font-bold leading-none">
+                  {season.teamTotals[t].toFixed(1)}
+                </p>
+                <p className="mt-0.5 text-[10px] uppercase tracking-[0.1em] text-white/50">
+                  acumulado
+                </p>
               </div>
-              <span className="text-[10px] text-ink-faint">S{w.week}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="card mb-4 p-4">
+        <p className="eyebrow mb-3">Per cápita por semana</p>
+        <div className="flex items-end gap-2" style={{ height: 110 }}>
+          {season.weeks.map(w => (
+            <div key={w.week} className="flex flex-1 flex-col items-center gap-1.5">
+              <div className="flex h-full w-full items-end justify-center gap-[3px]">
+                {(['A', 'B'] as Team[]).map(t => (
+                  <div key={t}
+                    className={`w-1/2 rounded-t-[3px] ${t === 'A' ? 'bg-teamA' : 'bg-teamB'}`}
+                    style={{ height: `${Math.max(3, (w.teams[t].perCapita / maxPC) * 100)}%` }}
+                    title={`Equipo ${t}: ${w.teams[t].perCapita.toFixed(1)}`} />
+                ))}
+              </div>
+              <span className="text-[10px] font-semibold text-ink-faint">S{w.week}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 flex gap-4 text-xs text-ink-soft">
+        <div className="mt-3 flex gap-4 border-t border-line pt-3 text-[11px] font-medium text-ink-soft">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-teamA" />Equipo A</span>
           <span className="flex items-center gap-1.5">
@@ -70,22 +88,19 @@ export default async function Temporada({
         </div>
       </section>
 
-      {/* Filtro por equipo */}
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-medium">Ranking individual acumulado</p>
+        <p className="eyebrow">Ranking individual</p>
         <div className="flex gap-1">
-          {[
-            { key: null, label: 'Todos' },
-            { key: 'A' as Team, label: 'A' },
-            { key: 'B' as Team, label: 'B' },
-          ].map(o => (
-            <Link key={o.label}
-              href={o.key ? `/c/${params.id}/temporada?equipo=${o.key}` : `/c/${params.id}/temporada`}
-              className={`rounded-md px-2.5 py-1 text-xs ${filter === o.key
-                ? 'bg-ink text-white' : 'bg-paper-sunk text-ink-soft hover:bg-line'}`}>
-              {o.label}
-            </Link>
-          ))}
+          {[{ key: null, label: 'Todos' }, { key: 'A' as Team, label: 'A' }, { key: 'B' as Team, label: 'B' }]
+            .map(o => (
+              <Link key={o.label}
+                href={o.key ? `/c/${params.id}/temporada?equipo=${o.key}` : `/c/${params.id}/temporada`}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] ${
+                  filter === o.key ? 'bg-navy-800 text-white'
+                    : 'border border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
+                {o.label}
+              </Link>
+            ))}
         </div>
       </div>
 
@@ -95,26 +110,27 @@ export default async function Temporada({
           return (
             <li key={p.id}>
               <Link href={`/c/${params.id}/p/${p.id}`}
-                className="card flex items-center gap-3 p-3 hover:bg-paper-sunk">
-                <span className="w-4 shrink-0 text-center text-[13px] text-ink-faint tabular-nums">
-                  {i + 1}
+                className="card flex items-center gap-3 p-3 transition hover:bg-ice-sunk">
+                <span className={`team-bar ${p.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
+                <span className="score w-6 shrink-0 text-center font-display text-base font-bold text-ink-faint">
+                  {i < 3 ? MEDAL[i] : i + 1}
                 </span>
-                <Avatar url={p.avatar_url} name={p.display_name} size={32} />
+                <Avatar url={p.avatar_url} name={p.display_name} size={36} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium">
+                  <p className="truncate text-sm font-semibold">
                     {p.nickname || p.display_name}
-                    <span className="ml-1.5 font-normal text-[11px] text-ink-faint">
-                      Equipo {p.team}
+                    <span className="ml-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-faint">
+                      {p.team}
                     </span>
                   </p>
                   {s && !s.usedWildcard && (
                     <div className="mt-1.5">
                       <ProgressBar count={s.workoutCount} goal={s.goal}
-                        maxWeekly={competition.max_weekly} team={p.team} />
+                        maxWeekly={competition.max_weekly} team={p.team} size="sm" />
                     </div>
                   )}
                 </div>
-                <span className="shrink-0 text-sm font-medium tabular-nums">{total} pts</span>
+                <span className="score shrink-0 font-display text-lg font-bold">{total}</span>
               </Link>
             </li>
           );

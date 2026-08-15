@@ -17,18 +17,15 @@ export default async function Registrar({ params }: { params: { id: string } }) 
 
   return (
     <>
-      <BackLink href={`/c/${params.id}`}>Volver</BackLink>
-      <h1 className="mb-5 mt-4 text-xl font-medium">Registrar entrenamiento</h1>
+      <BackLink href={`/c/${params.id}`}>Marcador</BackLink>
+      <h1 className="display mb-1 mt-3 text-2xl leading-none">Registrar</h1>
+      <p className="mb-5 text-[13px] text-ink-soft">Semana {currentWeek}</p>
 
       <WorkoutForm
-        competitionId={params.id}
-        participantId={me.id}
-        weekNumber={currentWeek}
-        sports={sports.map(s => s.name)}
-        alreadyThisWeek={mine.workoutCount}
-        maxWeekly={competition.max_weekly}
-        goal={mine.goal}
-        usedWildcard={mine.usedWildcard}
+        competitionId={params.id} participantId={me.id} weekNumber={currentWeek}
+        sports={sports.map(s => s.name)} alreadyThisWeek={mine.workoutCount}
+        maxWeekly={competition.max_weekly} goal={mine.goal}
+        usedWildcard={mine.usedWildcard} team={me.team}
       />
     </>
   );
