@@ -29,7 +29,7 @@ export default async function Home() {
           <div>
             <Brand dark />
             <h1 className="display mt-3 text-2xl leading-none">Competencias</h1>
-            <p className="mt-1.5 text-[13px] text-white/60">{user?.email}</p>
+            <p className="mt-1.5 text-[0.8125rem] text-white/60">{user?.email}</p>
           </div>
           <SignOut />
         </div>
@@ -52,7 +52,7 @@ export default async function Home() {
                 <span className="team-bar bg-navy-800" />
                 <div className="min-w-0 flex-1">
                   <p className="display truncate text-lg leading-tight">{c.name}</p>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-ink-faint">
+                  <p className="mt-1 text-[0.6875rem] uppercase tracking-[0.08em] text-ink-faint">
                     Semana {week} · {formatWeekRange(c.start_date, week)}
                   </p>
                 </div>
@@ -68,7 +68,7 @@ export default async function Home() {
 
       <div className="mt-8 border-t border-line pt-4">
         <Link href="/admin"
-          className="text-[13px] font-medium text-ink-faint underline underline-offset-2">
+          className="text-[0.8125rem] font-medium text-ink-faint underline underline-offset-2">
           Panel de administración
         </Link>
       </div>

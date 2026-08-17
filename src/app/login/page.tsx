@@ -70,12 +70,12 @@ function LoginForm() {
         </div>
 
         {error && (
-          <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[13px] text-teamA-ink">
+          <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[0.8125rem] text-teamA-ink">
             {error}
           </p>
         )}
         {notice && (
-          <p className="rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[13px] text-ink-soft">
+          <p className="rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[0.8125rem] text-ink-soft">
             {notice}
           </p>
         )}
@@ -85,7 +85,7 @@ function LoginForm() {
         </button>
 
         <button
-          className="w-full text-[13px] font-medium text-ink-soft underline underline-offset-2"
+          className="w-full text-[0.8125rem] font-medium text-ink-soft underline underline-offset-2"
           onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); }}>
           {mode === 'login' ? 'No tengo cuenta, quiero registrarme' : 'Ya tengo cuenta'}
         </button>

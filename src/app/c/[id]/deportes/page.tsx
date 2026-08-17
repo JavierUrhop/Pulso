@@ -54,7 +54,7 @@ export default async function Deportes({
                             [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
           <div className="mx-auto max-w-2xl">
             <Link href={`/c/${params.id}/deportes`}
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-white/75 hover:text-white">
+              className="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-white/75 hover:text-white">
               <span aria-hidden>←</span>Deportes
             </Link>
             <div className="mt-4 flex items-center gap-3">
@@ -63,7 +63,7 @@ export default async function Deportes({
               </span>
               <div className="min-w-0">
                 <h1 className="display truncate text-2xl leading-none">{selected}</h1>
-                <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-white/60">
+                <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.12em] text-white/60">
                   {count} {count === 1 ? 'entrenamiento' : 'entrenamientos'} en total
                 </p>
               </div>
@@ -82,7 +82,7 @@ export default async function Deportes({
                   <Avatar url={p.avatar_url} name={p.display_name} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{p.nickname || p.display_name}</p>
-                    <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                    <p className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-[0.08em] text-ink-faint">
                       Equipo {p.team}
                     </p>
                   </div>
@@ -96,7 +96,7 @@ export default async function Deportes({
                         <img src={src} alt="" className="h-12 w-12 rounded-lg object-cover" />
                       </a>
                     ))}
-                    <span className="self-center text-[11px] text-ink-faint">
+                    <span className="self-center text-[0.6875rem] text-ink-faint">
                       {DAY_NAMES[list[0].day_of_week - 1]} · S{list[0].week_number}
                     </span>
                   </div>
@@ -114,9 +114,9 @@ export default async function Deportes({
       <section className="-mx-4 -mt-5 mb-4 bg-navy-grad px-4 pb-5 pt-6 text-white
                           [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
         <div className="mx-auto max-w-2xl">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/60">Métrica compartida</p>
+          <p className="text-[0.6875rem] uppercase tracking-[0.16em] text-white/60">Métrica compartida</p>
           <h1 className="display mt-1 text-2xl leading-none">Deportes</h1>
-          <p className="mt-3 text-[13px] text-white/70">
+          <p className="mt-3 text-[0.8125rem] text-white/70">
             <span className="score font-display text-2xl font-bold text-white">{grandTotal}</span>
             {' '}entrenamientos entre los dos equipos, en {ranked.length}
             {' '}{ranked.length === 1 ? 'disciplina' : 'disciplinas'}.
@@ -133,7 +133,7 @@ export default async function Deportes({
             <Link key={sport} href={`/c/${params.id}/deportes?d=${encodeURIComponent(sport)}`}
               className="card flex flex-col items-center p-3.5 text-center transition hover:bg-ice-sunk">
               <span className="text-3xl leading-none">{sportIcon(sport)}</span>
-              <p className="mt-2 line-clamp-2 text-[12px] font-semibold leading-tight">{sport}</p>
+              <p className="mt-2 line-clamp-2 text-[0.75rem] font-semibold leading-tight">{sport}</p>
               <p className="score mt-1.5 font-display text-2xl font-bold leading-none">{row.total}</p>
               <div className="mt-2 flex w-full gap-[3px]" aria-hidden>
                 <div className="h-1 rounded-full bg-teamA"
@@ -141,7 +141,7 @@ export default async function Deportes({
                 <div className="h-1 rounded-full bg-teamB"
                   style={{ flex: Math.max(row.B, 0.02) }} />
               </div>
-              <p className="mt-1 text-[10px] font-semibold text-ink-faint">
+              <p className="mt-1 text-[0.625rem] font-semibold text-ink-faint">
                 <span className="text-teamA">{row.A}</span>
                 {' · '}
                 <span className="text-teamB">{row.B}</span>

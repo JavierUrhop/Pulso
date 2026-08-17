@@ -21,7 +21,7 @@ export async function loadCompetition(competitionId: string) {
       .order('created_at', { ascending: false }),
     supabase.from('wildcards').select('*').eq('competition_id', competitionId),
     supabase.from('participant_goals').select('*').eq('competition_id', competitionId),
-    supabase.from('sports').select('*').eq('is_active', true).order('sort_order'),
+    supabase.from('sports').select('*').eq('is_active', true),
   ]);
 
   if (comp.error || !comp.data) return null;
@@ -36,7 +36,9 @@ export async function loadCompetition(competitionId: string) {
     workouts: (works.data ?? []) as Workout[],
     wildcards: (cards.data ?? []) as Wildcard[],
     goals: (goals.data ?? []) as ParticipantGoal[],
-    sports: (sports.data ?? []) as Sport[],
+    // Orden alfabético español: 'Fútbol' después de 'Funcional', tildes incluidas.
+    sports: ((sports.data ?? []) as Sport[])
+      .sort((a, b) => a.name.localeCompare(b.name, 'es')),
     me: participants.find(p => p.user_id === user?.id) ?? null,
     /** Semana vigente, tope en la última semana de la competencia. */
     currentWeek: activeWeek(competition.start_date, competition.total_weeks),

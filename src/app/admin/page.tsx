@@ -25,7 +25,7 @@ export default async function AdminHome({
       <div className="mb-4 flex items-center justify-between">
         <BackLink href="/">Volver a la app</BackLink>
         <form action={logout}>
-          <button className="text-[13px] text-ink-faint underline underline-offset-2">
+          <button className="text-[0.8125rem] text-ink-faint underline underline-offset-2">
             Cerrar panel
           </button>
         </form>
@@ -83,7 +83,7 @@ export default async function AdminHome({
                 className="field" defaultValue={1} min={0} />
             </div>
           </div>
-          <p className="rounded-xl bg-ice-sunk px-3.5 py-2.5 text-[12px] text-ink-soft">
+          <p className="rounded-xl bg-ice-sunk px-3.5 py-2.5 text-[0.75rem] text-ink-soft">
             La semana 1 corre del lunes 00:00 al domingo 23:59, hora de Chile. Si la fecha de
             inicio cae a mitad de semana, la competencia parte igual el lunes de esa semana.
           </p>
@@ -93,7 +93,7 @@ export default async function AdminHome({
 
       <div className="mb-2.5 flex items-center justify-between">
         <p className="eyebrow">Competencias</p>
-        <Link href="/admin/deportes" className="text-[13px] text-ink-soft hover:text-ink">
+        <Link href="/admin/deportes" className="text-[0.8125rem] text-ink-soft hover:text-ink">
           Catálogo de deportes
         </Link>
       </div>

@@ -33,7 +33,7 @@ export default async function Registrar({ params }: { params: { id: string } }) 
     <>
       <BackLink href={`/c/${params.id}`}>Marcador</BackLink>
       <h1 className="display mb-1 mt-3 text-2xl leading-none">Registrar</h1>
-      <p className="mb-5 text-[13px] text-ink-soft">
+      <p className="mb-5 text-[0.8125rem] text-ink-soft">
         Semana {currentWeek} de {competition.total_weeks}
       </p>
 

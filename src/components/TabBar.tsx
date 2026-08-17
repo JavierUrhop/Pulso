@@ -43,7 +43,7 @@ export default function TabBar({ competitionId }: { competitionId: string }) {
           return (
             <Link key={t.href} href={t.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-1 flex-col items-center gap-1 py-2 text-[9px] font-semibold
+              className={`flex flex-1 flex-col items-center gap-1 py-2 text-[0.5625rem] font-semibold
                 uppercase tracking-[0.04em] transition ${
                 active || t.cta ? 'text-navy-800' : 'text-ink-faint hover:text-ink-soft'}`}>
               <span className={t.cta

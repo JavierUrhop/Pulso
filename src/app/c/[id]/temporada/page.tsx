@@ -38,7 +38,7 @@ export default async function Temporada({
       <section className="-mx-4 -mt-5 mb-4 bg-navy-grad px-4 pb-5 pt-6 text-white
                           [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
         <div className="mx-auto max-w-2xl">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/60">
+          <p className="text-[0.6875rem] uppercase tracking-[0.16em] text-white/60">
             {currentWeek} de {competition.total_weeks}
             {' '}{competition.total_weeks === 1 ? 'semana' : 'semanas'}
           </p>
@@ -55,7 +55,7 @@ export default async function Temporada({
                 <p className="score mt-1 font-display text-3xl font-bold leading-none">
                   {season.teamTotals[t].toFixed(1)}
                 </p>
-                <p className="mt-0.5 text-[10px] uppercase tracking-[0.1em] text-white/50">
+                <p className="mt-0.5 text-[0.625rem] uppercase tracking-[0.1em] text-white/50">
                   acumulado
                 </p>
               </div>
@@ -77,11 +77,11 @@ export default async function Temporada({
                     title={`Equipo ${t}: ${w.teams[t].perCapita.toFixed(1)}`} />
                 ))}
               </div>
-              <span className="text-[10px] font-semibold text-ink-faint">S{w.week}</span>
+              <span className="text-[0.625rem] font-semibold text-ink-faint">S{w.week}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 flex gap-4 border-t border-line pt-3 text-[11px] font-medium text-ink-soft">
+        <div className="mt-3 flex gap-4 border-t border-line pt-3 text-[0.6875rem] font-medium text-ink-soft">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-teamA" />Equipo A</span>
           <span className="flex items-center gap-1.5">
@@ -96,7 +96,7 @@ export default async function Temporada({
             .map(o => (
               <Link key={o.label}
                 href={o.key ? `/c/${params.id}/temporada?equipo=${o.key}` : `/c/${params.id}/temporada`}
-                className={`rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] ${
+                className={`rounded-lg px-3 py-1.5 text-[0.6875rem] font-bold uppercase tracking-[0.06em] ${
                   filter === o.key ? 'bg-navy-800 text-white'
                     : 'border border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
                 {o.label}
@@ -120,7 +120,7 @@ export default async function Temporada({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">
                     {p.nickname || p.display_name}
-                    <span className="ml-1.5 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-faint">
+                    <span className="ml-1.5 text-[0.625rem] font-bold uppercase tracking-[0.06em] text-ink-faint">
                       {p.team}
                     </span>
                   </p>

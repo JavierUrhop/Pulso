@@ -38,6 +38,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
+      <head>
+        {/* Aplica el tamaño de texto guardado antes de pintar, para que no salte. */}
+        <script dangerouslySetInnerHTML={{ __html: `try{var s=localStorage.getItem('pulso:text-scale');if(s)document.documentElement.style.setProperty('--pulso-scale',s)}catch(e){}` }} />
+      </head>
       <body className="min-h-dvh">
         <div className="mx-auto w-full max-w-2xl px-4 pt-5
                         [padding-bottom:calc(6rem+env(safe-area-inset-bottom))]

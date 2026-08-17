@@ -39,6 +39,16 @@ Cada persona registra solo los suyos, eligiendo día, deporte y **entre 1 y 3 fo
 
 Cada deporte del catálogo trae una duración de referencia (por ejemplo, 40 min para fútbol). Es informativa y se muestra al elegirlo, pero no se guarda en el registro ni afecta el puntaje.
 
+Si el deporte no está en la lista, se elige **Otro** y se escribe. Queda guardado en el catálogo para todos y aparece desde ese momento en la pestaña Deportes.
+
+### Fotos y almacenamiento
+
+Las fotos se comprimen en el teléfono **antes** de subirse: se reducen a 1280 px de lado mayor y se guardan como JPEG de calidad 0.8. Una foto de celular baja de unos 3 MB a entre 200 y 350 KB, sin que se note en pantalla.
+
+Sin comprimir, un caso extremo (15 personas × 6 entrenamientos × 3 fotos × 8 semanas = 2.160 fotos) ocuparía más de 6 GB. Comprimidas quedan en torno a 550 MB, dentro del gigabyte que da el plan gratuito de Supabase Storage. Conviene igual revisar el consumo real en **Supabase → Settings → Usage**, porque los planes cambian.
+
+Los parámetros están en `src/lib/image.ts` (`MAX_SIDE` y `QUALITY`) si quieres apretar más o menos.
+
 ### Escalado de metas
 
 Si alguien iguala **exactamente** su meta durante 3 semanas seguidas, la meta sube en 1 a la semana siguiente. Superarla no cuenta para la racha, solo igualarla. El administrador también puede fijar metas a mano.
@@ -61,7 +71,7 @@ src/
     login/          ← registro e inicio de sesión
     page.tsx        ← competencias activas
     c/[id]/
-      page.tsx        ← marcador Equipo A vs Equipo B
+      page.tsx        ← marcador: consolidado por defecto, filtro por semana
       asignarme/      ← reclamar tu cupo (se bloquea al elegirlo)
       yo/             ← editar nombre, apodo y avatar
       registrar/      ← formulario de entrenamiento
@@ -96,6 +106,10 @@ node scripts/test-week.mjs                                    # 11 casos de fech
 ```
 
 El primero cubre bonos, topes, comodín, per cápita, escalado de metas y acumulado. El segundo cubre el cálculo de semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano.
+
+## Ajustes de la aplicación
+
+En **Perfil → engranaje** cada persona puede cambiar el tamaño del texto, con cuatro presets y un control fino de 85% a 140%. Toda la interfaz usa `rem`, así que la escala mueve texto y espaciado de forma proporcional. El valor se guarda en el dispositivo y se aplica antes del primer pintado, para que no salte al cargar.
 
 ## Actualizar una base que ya está en producción
 

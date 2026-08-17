@@ -50,7 +50,7 @@ export default function ClaimForm({
                 <Avatar url={p.avatar_url} name={p.display_name} size={38} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{p.display_name}</p>
-                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">
+                  <p className="mt-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-ink-faint">
                     Equipo {p.team}
                   </p>
                 </div>
@@ -62,7 +62,7 @@ export default function ClaimForm({
       </ul>
 
       {error && (
-        <p className="mt-3 rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[13px] text-teamA-ink">
+        <p className="mt-3 rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[0.8125rem] text-teamA-ink">
           {error}
         </p>
       )}
@@ -70,7 +70,7 @@ export default function ClaimForm({
       <button className="btn btn-primary mt-4 w-full text-base" onClick={claim} disabled={busy}>
         {busy ? 'Asignando…' : 'Este soy yo'}
       </button>
-      <p className="mt-2 text-center text-[11px] text-ink-faint">
+      <p className="mt-2 text-center text-[0.6875rem] text-ink-faint">
         Después podrás cambiar tu apodo y tu foto.
       </p>
     </>

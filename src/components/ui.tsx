@@ -80,7 +80,7 @@ export function Stat({ label, value, tone }: {
 }) {
   return (
     <div className="rounded-xl border border-line bg-ice-card p-2.5 text-center">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">{label}</p>
+      <p className="text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-ink-faint">{label}</p>
       <p className={`score mt-0.5 font-display text-xl font-bold ${
         tone === 'win' ? 'text-win' : ''}`}>{value}</p>
     </div>

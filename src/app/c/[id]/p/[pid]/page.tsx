@@ -44,7 +44,7 @@ export default async function ParticipantDetail({
         ${p.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`}>
         <div className="mx-auto max-w-2xl">
           <Link href={`/c/${params.id}?semana=${week}`}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-white/75 hover:text-white">
+            className="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-white/75 hover:text-white">
             <span aria-hidden>←</span>Marcador
           </Link>
 
@@ -54,13 +54,13 @@ export default async function ParticipantDetail({
               <h1 className="display truncate text-2xl leading-none">
                 {p.nickname || p.display_name}
               </h1>
-              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.1em] text-white/70">
+              <p className="mt-1.5 flex flex-wrap items-center gap-2 text-[0.6875rem] uppercase tracking-[0.1em] text-white/70">
                 Equipo {p.team} · meta {s.goal}/sem
               </p>
             </div>
             {isMe && (
               <Link href={`/c/${params.id}/yo`}
-                className="rounded-lg bg-white/15 px-3 py-1.5 text-[12px] font-semibold hover:bg-white/25">
+                className="rounded-lg bg-white/15 px-3 py-1.5 text-[0.75rem] font-semibold hover:bg-white/25">
                 Editar
               </Link>
             )}
@@ -68,14 +68,14 @@ export default async function ParticipantDetail({
 
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.14em] text-white/60">Semana {week}</p>
+              <p className="text-[0.625rem] uppercase tracking-[0.14em] text-white/60">Semana {week}</p>
               <p className="score font-display text-4xl font-bold leading-none">
                 {s.usedWildcard ? '—' : s.total}
                 <span className="ml-1 text-sm font-semibold text-white/60">pts</span>
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-white/60">Temporada</p>
+              <p className="text-[0.625rem] uppercase tracking-[0.14em] text-white/60">Temporada</p>
               <p className="score font-display text-2xl font-bold leading-none">{seasonTotal}</p>
             </div>
           </div>
@@ -94,7 +94,7 @@ export default async function ParticipantDetail({
                   );
                 })}
               </div>
-              <p className="mt-1.5 text-[11px] text-white/70">
+              <p className="mt-1.5 text-[0.6875rem] text-white/70">
                 {s.workoutCount} de {competition.max_weekly} · meta {s.goal}
                 {s.exceededGoal && ' · meta superada'}
               </p>
@@ -111,7 +111,7 @@ export default async function ParticipantDetail({
       </div>
 
       {streak > 0 && !s.usedWildcard && (
-        <p className="mb-4 rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[13px] text-ink-soft">
+        <p className="mb-4 rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[0.8125rem] text-ink-soft">
           <span className="font-semibold text-ink">Racha de {streak}</span>
           {' '}{streak === 1 ? 'semana' : 'semanas'} igualando la meta.
           Con {competition.streak_to_raise} seguidas sube a {s.goal + 1}.
@@ -130,7 +130,7 @@ export default async function ParticipantDetail({
       {s.usedWildcard ? (
         <div className="card p-6 text-center">
           <p className="display text-base">Comodín aplicado</p>
-          <p className="mx-auto mt-1 max-w-xs text-[13px] text-ink-soft">
+          <p className="mx-auto mt-1 max-w-xs text-[0.8125rem] text-ink-soft">
             No suma ni resta puntos, y el promedio del equipo se calcula sin esta persona.
           </p>
         </div>
@@ -157,17 +157,17 @@ export default async function ParticipantDetail({
                   </div>
                 ) : (
                   <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-ice-sunk
-                                  text-[9px] font-semibold uppercase tracking-wide text-ink-faint">
+                                  text-[0.5625rem] font-semibold uppercase tracking-wide text-ink-faint">
                     sin foto
                   </div>
                 );
               })()}
               <div className="min-w-0 flex-1">
-                <p className="display text-[13px] leading-tight">{DAY_NAMES[w.day_of_week - 1]}</p>
+                <p className="display text-[0.8125rem] leading-tight">{DAY_NAMES[w.day_of_week - 1]}</p>
                 <p className="truncate text-sm font-medium">
                   <span className="mr-1">{sportIcon(w.sport)}</span>{w.sport}
                 </p>
-                {w.note && <p className="truncate text-[11px] text-ink-faint">{w.note}</p>}
+                {w.note && <p className="truncate text-[0.6875rem] text-ink-faint">{w.note}</p>}
               </div>
               <span className="score shrink-0 rounded-md bg-win/12 px-2 py-1 text-xs font-bold text-win">
                 +1

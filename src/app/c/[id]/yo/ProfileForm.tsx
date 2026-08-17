@@ -59,7 +59,7 @@ export default function ProfileForm({
             <input type="file" accept="image/*" className="hidden" disabled={busy}
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
           </label>
-          <p className="mt-1.5 text-[11px] text-ink-faint">Así te ve el resto del equipo.</p>
+          <p className="mt-1.5 text-[0.6875rem] text-ink-faint">Así te ve el resto del equipo.</p>
         </div>
       </div>
 
@@ -77,12 +77,12 @@ export default function ProfileForm({
       </div>
 
       {error && (
-        <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[13px] text-teamA-ink">
+        <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[0.8125rem] text-teamA-ink">
           {error}
         </p>
       )}
       {saved && (
-        <p className="rounded-xl border border-win/25 bg-win/10 px-3.5 py-2.5 text-[13px] text-win">
+        <p className="rounded-xl border border-win/25 bg-win/10 px-3.5 py-2.5 text-[0.8125rem] text-win">
           Cambios guardados.
         </p>
       )}

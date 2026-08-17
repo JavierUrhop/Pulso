@@ -2,7 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+  /* Escala de texto ajustable desde Perfil → Ajustes. */
+  --pulso-scale: 1;
+}
+
+/* Todo el diseño usa rem, así que mover esta raíz agranda o achica
+   la interfaz completa de forma proporcional. */
+html { font-size: calc(16px * var(--pulso-scale)); }
 
 body {
   background: theme('colors.ice.DEFAULT');
@@ -17,7 +25,7 @@ body {
     @apply font-display font-bold uppercase tracking-[0.02em];
   }
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint;
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-ink-faint;
   }
 
   .card {
@@ -41,10 +49,10 @@ body {
            outline-none transition focus:border-navy-600 focus:ring-4 focus:ring-navy-600/10;
   }
   .label {
-    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-soft;
+    @apply mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-ink-soft;
   }
   .chip {
-    @apply inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em];
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-[0.06em];
   }
 
   /* Franja de color que identifica al equipo, como en las tablas de resultados */

@@ -45,3 +45,27 @@ export function photosOf(w: Workout & { photo_url?: string | null }): string[] {
 }
 
 export const MAX_PHOTOS = 3;
+
+/**
+ * Normaliza un deporte escrito a mano: quita espacios sobrantes y deja
+ * cada palabra con mayúscula inicial, igual que el catálogo base.
+ * Las siglas cortas ya escritas en mayúsculas se conservan (HIIT, SUP, MTB).
+ */
+export function titleCase(input: string): string {
+  const clean = input.trim().replace(/\s+/g, ' ');
+  if (!clean) return '';
+
+  return clean
+    .split(' ')
+    .map(word => {
+      const isAcronym = word.length <= 4
+        && word === word.toLocaleUpperCase('es')
+        && /\p{Lu}/u.test(word);
+      if (isAcronym) return word;
+
+      return word
+        .toLocaleLowerCase('es')
+        .replace(/^[\p{L}]/u, ch => ch.toLocaleUpperCase('es'));
+    })
+    .join(' ');
+}

@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import ProfileForm from './ProfileForm';
 import SignOut from '@/components/SignOut';
+import Settings from '@/components/Settings';
 
 
 export const dynamic = 'force-dynamic';
@@ -21,15 +22,18 @@ export default async function MiPerfil({ params }: { params: { id: string } }) {
         <div className="mx-auto flex max-w-2xl items-start justify-between">
           <div>
             <h1 className="display text-2xl leading-none">Mi perfil</h1>
-            <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-white/70">
+            <p className="mt-1.5 text-[0.6875rem] uppercase tracking-[0.12em] text-white/70">
               Equipo {me.team} · {me.category === 'inicial' ? 'meta inicial' : 'meta avanzada'}
             </p>
           </div>
-          <SignOut />
+          <div className="flex items-center gap-2">
+            <Settings />
+            <SignOut />
+          </div>
         </div>
       </section>
 
-      <p className="mb-4 text-[13px] text-ink-soft">
+      <p className="mb-4 text-[0.8125rem] text-ink-soft">
         Tu equipo y categoría los define el administrador. Aquí puedes ajustar cómo te ven los demás.
       </p>
 

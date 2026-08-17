@@ -355,3 +355,60 @@ insert into public.sports (name, reference, sort_order) values
   ('Spinning',                '40 min',             190),
   ('Surf',                    '45 min en el agua',  200)
 on conflict (name) do nothing;
+
+-- =====================================================================
+-- DEPORTES AGREGADOS POR LOS PARTICIPANTES
+-- Al registrar un entrenamiento se puede elegir "Otro" y escribir un
+-- deporte nuevo. Se resuelve con una función security definer para no
+-- abrir la tabla a escritura: lo único posible es agregar un nombre.
+-- =====================================================================
+create or replace function public.unaccent_safe(txt text)
+returns text
+language sql
+immutable
+as $$
+  select translate(
+    coalesce(txt, ''),
+    'áàäâãéèëêíìïîóòöôõúùüûñçÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇ',
+    'aaaaaeeeeiiiiooooouuuuncAAAAAEEEEIIIIOOOOOUUUUNC'
+  );
+$$;
+
+create or replace function public.add_sport(p_name text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_name     text;
+  v_existing text;
+begin
+  v_name := btrim(regexp_replace(coalesce(p_name, ''), '\s+', ' ', 'g'));
+
+  if length(v_name) < 3 then
+    raise exception 'El nombre del deporte es muy corto.';
+  end if;
+  if length(v_name) > 40 then
+    raise exception 'El nombre del deporte es muy largo.';
+  end if;
+
+  select name into v_existing
+    from public.sports
+   where lower(unaccent_safe(name)) = lower(unaccent_safe(v_name))
+   limit 1;
+
+  if v_existing is not null then
+    update public.sports set is_active = true where name = v_existing;
+    return v_existing;
+  end if;
+
+  insert into public.sports (name, sort_order, is_active)
+  values (v_name, 500, true);
+
+  return v_name;
+end;
+$$;
+
+grant execute on function public.add_sport(text) to authenticated;
+grant execute on function public.unaccent_safe(text) to authenticated;

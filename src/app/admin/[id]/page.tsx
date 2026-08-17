@@ -137,12 +137,12 @@ export default async function AdminCompetition({
                 <input type="hidden" name="competition_id" value={c.id} />
                 <input type="hidden" name="participant_id" value={p.id} />
                 <div>
-                  <label className="label text-[10px]">Desde semana</label>
+                  <label className="label text-[0.625rem]">Desde semana</label>
                   <input name="week_number" type="number" className="field h-8 w-20 text-xs"
                     defaultValue={currentWeek} min={1} />
                 </div>
                 <div>
-                  <label className="label text-[10px]">Meta</label>
+                  <label className="label text-[0.625rem]">Meta</label>
                   <input name="goal" type="number" className="field h-8 w-16 text-xs"
                     defaultValue={p.category === 'inicial' ? c.goal_initial : c.goal_advanced} min={1} />
                 </div>
@@ -153,7 +153,7 @@ export default async function AdminCompetition({
                 <input type="hidden" name="competition_id" value={c.id} />
                 <input type="hidden" name="participant_id" value={p.id} />
                 <div>
-                  <label className="label text-[10px]">Comodín semana</label>
+                  <label className="label text-[0.625rem]">Comodín semana</label>
                   <input name="week_number" type="number" className="field h-8 w-20 text-xs"
                     defaultValue={currentWeek} min={1} max={c.total_weeks} />
                 </div>
@@ -193,7 +193,7 @@ export default async function AdminCompetition({
           <p className="eyebrow mb-2.5">Comodines usados</p>
           <ul className="mb-6 space-y-1.5">
             {wildcards.map(w => (
-              <li key={w.id} className="card flex items-center justify-between gap-2 p-2.5 text-[13px]">
+              <li key={w.id} className="card flex items-center justify-between gap-2 p-2.5 text-[0.8125rem]">
                 <span className="min-w-0 flex-1 truncate">
                   {nameOf.get(w.participant_id) ?? '—'} · semana {w.week_number}
                   <span className={`chip ml-2 ${w.is_admin_grant
@@ -233,7 +233,7 @@ export default async function AdminCompetition({
                   </div>
                 ) : <div className="h-9 w-9 rounded bg-ice-sunk" />;
               })()}
-              <div className="min-w-0 flex-1 text-[13px]">
+              <div className="min-w-0 flex-1 text-[0.8125rem]">
                 <p className="truncate font-medium">{nameOf.get(w.participant_id) ?? '—'}</p>
                 <p className="text-xs text-ink-faint">
                   S{w.week_number} · {DAY_NAMES[w.day_of_week - 1]} · {w.sport}
