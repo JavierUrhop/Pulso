@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import { scoreWeek, currentStreak } from '@/lib/scoring';
 import { DAY_NAMES, formatWeekRange } from '@/lib/week';
-import { Avatar, CategoryChip, ProgressBar, Stat } from '@/components/ui';
+import { Avatar, ProgressBar, Stat } from '@/components/ui';
+import { photosOf, sportIcon } from '@/lib/sports';
 import WildcardButton from '@/components/WildcardButton';
 
 export const dynamic = 'force-dynamic';
@@ -142,21 +143,30 @@ export default async function ParticipantDetail({
           {log.map(w => (
             <li key={w.id} className="card flex items-center gap-3 p-2.5">
               <span className={`team-bar ${p.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
-              {w.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <a href={w.photo_url} target="_blank" rel="noreferrer" className="shrink-0">
-                  <img src={w.photo_url} alt={`Registro de ${w.sport}`}
-                    className="h-14 w-14 rounded-lg object-cover" />
-                </a>
-              ) : (
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-ice-sunk
-                                text-[9px] font-semibold uppercase tracking-wide text-ink-faint">
-                  sin foto
-                </div>
-              )}
+              {(() => {
+                const photos = photosOf(w);
+                return photos.length ? (
+                  <div className="flex shrink-0 gap-1">
+                    {photos.slice(0, 3).map((src, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <a key={i} href={src} target="_blank" rel="noreferrer">
+                        <img src={src} alt={`Registro de ${w.sport}`}
+                          className="h-14 w-14 rounded-lg object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-ice-sunk
+                                  text-[9px] font-semibold uppercase tracking-wide text-ink-faint">
+                    sin foto
+                  </div>
+                );
+              })()}
               <div className="min-w-0 flex-1">
                 <p className="display text-[13px] leading-tight">{DAY_NAMES[w.day_of_week - 1]}</p>
-                <p className="truncate text-sm font-medium">{w.sport}</p>
+                <p className="truncate text-sm font-medium">
+                  <span className="mr-1">{sportIcon(w.sport)}</span>{w.sport}
+                </p>
                 {w.note && <p className="truncate text-[11px] text-ink-faint">{w.note}</p>}
               </div>
               <span className="score shrink-0 rounded-md bg-win/12 px-2 py-1 text-xs font-bold text-win">

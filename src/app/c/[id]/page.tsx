@@ -14,7 +14,7 @@ export default async function Dashboard({
   const data = await loadCompetition(params.id);
   if (!data) notFound();
 
-  const { competition, participants, workouts, wildcards, goals, me, currentWeek } = data;
+  const { competition, participants, workouts, wildcards, goals, me, currentWeek, finished } = data;
   if (!me) redirect(`/c/${params.id}/asignarme`);
 
   const week = Math.min(Math.max(Number(searchParams.semana) || currentWeek, 1), currentWeek);
@@ -40,7 +40,7 @@ export default async function Dashboard({
           <div className="flex items-center justify-between">
             <Link href="/"><Brand dark /></Link>
             <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em]">
-              Semana {week}
+              {finished ? 'Finalizada' : `Semana ${week} / ${competition.total_weeks}`}
             </span>
           </div>
 

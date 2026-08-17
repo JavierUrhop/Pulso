@@ -32,9 +32,9 @@ export function Avatar({
 
 export function CategoryChip({ category }: { category: Category }) {
   return (
-    <span className={`chip ${category === 'sedentario'
+    <span className={`chip ${category === 'inicial'
       ? 'bg-ice-sunk text-ink-soft' : 'bg-navy-800 text-white'}`}>
-      {category === 'sedentario' ? 'Base' : 'Avanzado'}
+      {category === 'inicial' ? 'Inicial' : 'Avanzada'}
     </span>
   );
 }

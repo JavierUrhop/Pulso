@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import ProfileForm from './ProfileForm';
 import SignOut from '@/components/SignOut';
-import { CategoryChip } from '@/components/ui';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export default async function MiPerfil({ params }: { params: { id: string } }) {
           <div>
             <h1 className="display text-2xl leading-none">Mi perfil</h1>
             <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-white/70">
-              Equipo {me.team} · {me.category === 'sedentario' ? 'categoría base' : 'categoría avanzada'}
+              Equipo {me.team} · {me.category === 'inicial' ? 'meta inicial' : 'meta avanzada'}
             </p>
           </div>
           <SignOut />

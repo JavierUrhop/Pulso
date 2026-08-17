@@ -1,13 +1,14 @@
 export type Team = 'A' | 'B';
-export type Category = 'sedentario' | 'avanzado';
+export type Category = 'inicial' | 'avanzada';
 
 export interface Competition {
   id: string;
   name: string;
   start_date: string;
   end_date: string | null;
-  goal_sedentario: number;
-  goal_avanzado: number;
+  goal_initial: number;
+  goal_advanced: number;
+  total_weeks: number;
   max_weekly: number;
   bonus_goal_met: number;
   bonus_goal_exceeded: number;
@@ -38,7 +39,7 @@ export interface Workout {
   day_of_week: number;
   sport: string;
   note: string | null;
-  photo_url: string | null;
+  photo_urls: string[];
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ export interface Wildcard {
   participant_id: string;
   week_number: number;
   reason: string | null;
+  is_admin_grant: boolean;
 }
 
 export interface ParticipantGoal {
@@ -62,6 +64,8 @@ export interface ParticipantGoal {
 export interface Sport {
   id: string;
   name: string;
+  /** Duración mínima sugerida. Informativa: no se guarda en el registro. */
+  reference: string | null;
   sort_order: number;
   is_active: boolean;
 }

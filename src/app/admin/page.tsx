@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { isAdmin, login, logout, createCompetition } from './actions';
 import { createAdminClient } from '@/lib/supabase/server';
-import { weekNumberFor } from '@/lib/week';
+import { weekNumberFor, endDateOf, formatDate } from '@/lib/week';
 import { BackLink } from '@/components/ui';
 import ErrorBanner from '@/components/ErrorBanner';
 import type { Competition } from '@/lib/types';
@@ -48,24 +48,29 @@ export default async function AdminHome({
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="label" htmlFor="start_date">Inicio</label>
+              <label className="label" htmlFor="start_date">Fecha de inicio</label>
               <input id="start_date" name="start_date" type="date" className="field"
                 defaultValue={today} required />
+            </div>
+            <div>
+              <label className="label" htmlFor="total_weeks">Duración (semanas)</label>
+              <input id="total_weeks" name="total_weeks" type="number" className="field"
+                defaultValue={12} min={1} max={52} required />
+            </div>
+            <div>
+              <label className="label" htmlFor="goal_initial">Meta inicial</label>
+              <input id="goal_initial" name="goal_initial" type="number" className="field"
+                defaultValue={2} min={1} />
+            </div>
+            <div>
+              <label className="label" htmlFor="goal_advanced">Meta avanzada</label>
+              <input id="goal_advanced" name="goal_advanced" type="number" className="field"
+                defaultValue={3} min={1} />
             </div>
             <div>
               <label className="label" htmlFor="max_weekly">Tope semanal</label>
               <input id="max_weekly" name="max_weekly" type="number" className="field"
                 defaultValue={6} min={1} max={7} />
-            </div>
-            <div>
-              <label className="label" htmlFor="goal_sedentario">Meta sedentario</label>
-              <input id="goal_sedentario" name="goal_sedentario" type="number" className="field"
-                defaultValue={2} min={1} />
-            </div>
-            <div>
-              <label className="label" htmlFor="goal_avanzado">Meta avanzado</label>
-              <input id="goal_avanzado" name="goal_avanzado" type="number" className="field"
-                defaultValue={3} min={1} />
             </div>
             <div>
               <label className="label" htmlFor="streak_to_raise">Semanas para subir meta</label>
@@ -78,6 +83,10 @@ export default async function AdminHome({
                 className="field" defaultValue={1} min={0} />
             </div>
           </div>
+          <p className="rounded-xl bg-ice-sunk px-3.5 py-2.5 text-[12px] text-ink-soft">
+            La semana 1 corre del lunes 00:00 al domingo 23:59, hora de Chile. Si la fecha de
+            inicio cae a mitad de semana, la competencia parte igual el lunes de esa semana.
+          </p>
           <button className="btn btn-primary w-full">Crear competencia</button>
         </form>
       </section>
@@ -99,7 +108,9 @@ export default async function AdminHome({
                 <div className="min-w-0">
                   <p className="display truncate text-base leading-tight">{c.name}</p>
                   <p className="mt-0.5 text-xs text-ink-faint">
-                    Semana {weekNumberFor(c.start_date)} · metas {c.goal_sedentario}/{c.goal_avanzado}
+                    Semana {Math.min(weekNumberFor(c.start_date), c.total_weeks)} de {c.total_weeks}
+                    {' · '}metas {c.goal_initial}/{c.goal_advanced}
+                    {' · '}hasta {formatDate(endDateOf(c.start_date, c.total_weeks))}
                   </p>
                 </div>
                 <span className={`chip ${c.is_active

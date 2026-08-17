@@ -10,7 +10,9 @@ Para montarlo, sigue [SETUP.md](./SETUP.md).
 
 ## Cómo funciona la competencia
 
-**Equipos y categorías son cosas distintas.** Equipo A y Equipo B compiten entre sí. Sedentario y avanzado definen la meta semanal de cada persona. Un equipo mezcla ambas categorías, así queda parejo.
+**Equipos y metas son cosas distintas.** Equipo A y Equipo B compiten entre sí. La *meta inicial* y la *meta avanzada* definen cuántos entrenamientos por semana necesita cada persona. Un equipo mezcla ambas, así queda parejo.
+
+**Las semanas van de lunes a domingo, en horario de Chile.** La semana 1 corre del lunes 00:00 al domingo 23:59 (`America/Santiago`), incluso si la fecha de inicio cae a mitad de semana. Todo el cálculo usa esa zona horaria, así que un domingo por la noche nunca se cuenta como lunes. La competencia dura la cantidad de semanas que fije el administrador.
 
 ### Puntaje semanal por persona
 
@@ -28,6 +30,14 @@ Se suman los puntos de todos los integrantes que cuentan esa semana y se divide 
 ### Comodín
 
 Uno por persona en toda la temporada. Quien lo usa queda fuera del cálculo de esa semana: no suma, no resta, y no rompe el bono de equipo completo.
+
+El administrador puede otorgar comodines adicionales desde el panel, indicando la semana. Esos no consumen el cupo de la persona y quedan marcados como "Admin" en el listado, para que se note la diferencia.
+
+### Registro de entrenamientos
+
+Cada persona registra solo los suyos, eligiendo día, deporte y **entre 1 y 3 fotos** de respaldo, que pueden venir de la cámara o de la galería. La foto es obligatoria: sin ella el registro no se guarda.
+
+Cada deporte del catálogo trae una duración de referencia (por ejemplo, 40 min para fútbol). Es informativa y se muestra al elegirlo, pero no se guarda en el registro ni afecta el puntaje.
 
 ### Escalado de metas
 
@@ -57,13 +67,15 @@ src/
       registrar/      ← formulario de entrenamiento
       p/[pid]/        ← detalle de una persona con bitácora y fotos
       temporada/      ← acumulado, gráfico y ranking
+      deportes/       ← marcador global: qué deporte hace cada equipo
     admin/
       page.tsx        ← clave compartida + crear competencias
       [id]/           ← integrantes, reglas, metas manuales, registros
       deportes/       ← catálogo del desplegable
   components/
 supabase/
-  schema.sql        ← tablas, RLS, triggers, buckets y deportes iniciales
+  schema.sql        ← instalación desde cero
+  migrations/       ← cambios sobre una base que ya está en producción
 ```
 
 ## Seguridad
@@ -79,10 +91,15 @@ Las reglas viven en la base de datos (RLS), no solo en la interfaz:
 ## Probar las reglas
 
 ```bash
-node scripts/test-scoring.mjs && node scripts/run-tests.mjs
+node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 24 casos de puntaje
+node scripts/test-week.mjs                                    # 11 casos de fechas
 ```
 
-Cubre 24 casos: bonos, topes, comodín, per cápita, escalado de metas y acumulado.
+El primero cubre bonos, topes, comodín, per cápita, escalado de metas y acumulado. El segundo cubre el cálculo de semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano.
+
+## Actualizar una base que ya está en producción
+
+`schema.sql` sirve para instalar desde cero. Si la competencia ya está andando con datos reales, corre en su lugar los archivos de `supabase/migrations/` en orden, una sola vez cada uno, desde el SQL Editor de Supabase.
 
 ## Ideas para después
 

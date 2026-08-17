@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: 'Pulso', template: '%s · Pulso' },
   description: 'Competencia deportiva por equipos, con registro auditable de entrenamientos.',
   applicationName: 'Pulso',

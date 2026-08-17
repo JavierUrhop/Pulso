@@ -39,7 +39,8 @@ export default async function Temporada({
                           [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
         <div className="mx-auto max-w-2xl">
           <p className="text-[11px] uppercase tracking-[0.16em] text-white/60">
-            {currentWeek} {currentWeek === 1 ? 'semana' : 'semanas'} jugadas
+            {currentWeek} de {competition.total_weeks}
+            {' '}{competition.total_weeks === 1 ? 'semana' : 'semanas'}
           </p>
           <h1 className="display mt-1 text-2xl leading-none">Temporada</h1>
 

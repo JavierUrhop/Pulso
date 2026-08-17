@@ -57,8 +57,9 @@ export async function createCompetition(formData: FormData) {
   const { error } = await supabase.from('competitions').insert({
     name,
     start_date: startDate,
-    goal_sedentario: Number(formData.get('goal_sedentario') ?? 2),
-    goal_avanzado: Number(formData.get('goal_avanzado') ?? 3),
+    goal_initial: Number(formData.get('goal_initial') ?? 2),
+    goal_advanced: Number(formData.get('goal_advanced') ?? 3),
+    total_weeks: Number(formData.get('total_weeks') ?? 12),
     max_weekly: Number(formData.get('max_weekly') ?? 6),
     streak_to_raise: Number(formData.get('streak_to_raise') ?? 3),
     wildcards_per_person: Number(formData.get('wildcards_per_person') ?? 1),
@@ -76,8 +77,9 @@ export async function updateCompetition(formData: FormData) {
   const { error } = await supabase.from('competitions').update({
     name: String(formData.get('name') ?? '').trim(),
     start_date: String(formData.get('start_date')),
-    goal_sedentario: Number(formData.get('goal_sedentario')),
-    goal_avanzado: Number(formData.get('goal_avanzado')),
+    goal_initial: Number(formData.get('goal_initial')),
+    goal_advanced: Number(formData.get('goal_advanced')),
+    total_weeks: Number(formData.get('total_weeks')),
     max_weekly: Number(formData.get('max_weekly')),
     bonus_goal_met: Number(formData.get('bonus_goal_met')),
     bonus_goal_exceeded: Number(formData.get('bonus_goal_exceeded')),
@@ -105,7 +107,7 @@ export async function addParticipant(formData: FormData) {
     competition_id: competitionId,
     display_name: name,
     team: String(formData.get('team') ?? 'A'),
-    category: String(formData.get('category') ?? 'sedentario'),
+    category: String(formData.get('category') ?? 'inicial'),
   });
 
   if (error) fail(`/admin/${competitionId}`, error.message);
@@ -199,6 +201,36 @@ export async function deleteWorkout(formData: FormData) {
 
   const { error } = await supabase.from('workouts').delete().eq('id', id);
   if (error) fail(`/admin/${competitionId}`, error.message);
+  revalidatePath(`/admin/${competitionId}`);
+  revalidatePath(`/c/${competitionId}`);
+}
+
+/** El administrador concede un comodín, sin gastar el cupo de la temporada. */
+export async function grantWildcard(formData: FormData) {
+  const supabase = await requireAdmin();
+  const competitionId = String(formData.get('competition_id'));
+  const participantId = String(formData.get('participant_id'));
+  const weekNumber = Number(formData.get('week_number'));
+
+  if (!weekNumber || weekNumber < 1) {
+    fail(`/admin/${competitionId}`, 'Indica una semana válida para el comodín.');
+  }
+
+  const { error } = await supabase.from('wildcards').insert({
+    competition_id: competitionId,
+    participant_id: participantId,
+    week_number: weekNumber,
+    reason: String(formData.get('reason') ?? '').trim() || 'Otorgado por administración',
+    is_admin_grant: true,
+  });
+
+  if (error) {
+    fail(`/admin/${competitionId}`,
+      error.code === '23505'
+        ? 'Esa persona ya tiene un comodín en esa semana.'
+        : error.message);
+  }
+
   revalidatePath(`/admin/${competitionId}`);
   revalidatePath(`/c/${competitionId}`);
 }

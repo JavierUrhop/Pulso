@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import { isAdmin, updateCompetition, addParticipant, updateParticipant,
   releaseParticipant, deleteParticipant, setGoal, clearGoal,
-  deleteWorkout, deleteWildcard } from '../actions';
+  deleteWorkout, deleteWildcard, grantWildcard } from '../actions';
 import { createAdminClient } from '@/lib/supabase/server';
-import { weekNumberFor, DAY_NAMES } from '@/lib/week';
+import { weekNumberFor, DAY_NAMES, endDateOf, formatDate } from '@/lib/week';
 import { BackLink, Avatar } from '@/components/ui';
+import { photosOf } from '@/lib/sports';
 import ErrorBanner from '@/components/ErrorBanner';
 import { redirect } from 'next/navigation';
 import type { Competition, Participant, Workout, Wildcard, ParticipantGoal } from '@/lib/types';
@@ -31,7 +32,7 @@ export default async function AdminCompetition({
   const workouts = (works.data ?? []) as Workout[];
   const wildcards = (cards.data ?? []) as Wildcard[];
   const manualGoals = (goals.data ?? []) as ParticipantGoal[];
-  const currentWeek = weekNumberFor(c.start_date);
+  const currentWeek = Math.min(weekNumberFor(c.start_date), c.total_weeks);
   const nameOf = new Map(participants.map(p => [p.id, p.nickname || p.display_name]));
 
   return (
@@ -40,7 +41,9 @@ export default async function AdminCompetition({
       <ErrorBanner message={searchParams.error} />
       <h1 className="display mb-1 mt-3 text-2xl leading-none">{c.name}</h1>
       <p className="mb-6 text-sm text-ink-soft">
-        Semana {currentWeek} · {participants.filter(p => p.is_active).length} integrantes activos
+        Semana {currentWeek} de {c.total_weeks} · termina el{' '}
+        {formatDate(endDateOf(c.start_date, c.total_weeks))} ·{' '}
+        {participants.filter(p => p.is_active).length} integrantes activos
       </p>
 
       {/* Reglas */}
@@ -53,10 +56,11 @@ export default async function AdminCompetition({
             <input id="name" name="name" className="field" defaultValue={c.name} />
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            <Num label="Inicio" name="start_date" type="date" value={c.start_date} />
+            <Num label="Fecha de inicio" name="start_date" type="date" value={c.start_date} />
+            <Num label="Duración (semanas)" name="total_weeks" value={c.total_weeks} />
+            <Num label="Meta inicial" name="goal_initial" value={c.goal_initial} />
+            <Num label="Meta avanzada" name="goal_advanced" value={c.goal_advanced} />
             <Num label="Tope semanal" name="max_weekly" value={c.max_weekly} />
-            <Num label="Meta sedentario" name="goal_sedentario" value={c.goal_sedentario} />
-            <Num label="Meta avanzado" name="goal_avanzado" value={c.goal_avanzado} />
             <Num label="Bono meta cumplida" name="bonus_goal_met" value={c.bonus_goal_met} />
             <Num label="Bono superar meta" name="bonus_goal_exceeded" value={c.bonus_goal_exceeded} />
             <Num label="Bono equipo completo" name="bonus_team_sweep" value={c.bonus_team_sweep} />
@@ -85,8 +89,8 @@ export default async function AdminCompetition({
             <option value="B">Equipo B</option>
           </select>
           <select name="category" className="field w-32" aria-label="Categoría">
-            <option value="sedentario">Sedentario</option>
-            <option value="avanzado">Avanzado</option>
+            <option value="inicial">Meta inicial</option>
+            <option value="avanzada">Meta avanzada</option>
           </select>
           <button className="btn btn-primary">Agregar</button>
         </form>
@@ -119,8 +123,8 @@ export default async function AdminCompetition({
                 <option value="A">A</option><option value="B">B</option>
               </select>
               <select name="category" className="field w-32" defaultValue={p.category} aria-label="Categoría">
-                <option value="sedentario">Sedentario</option>
-                <option value="avanzado">Avanzado</option>
+                <option value="inicial">Meta inicial</option>
+                <option value="avanzada">Meta avanzada</option>
               </select>
               <label className="flex items-center gap-1.5 text-xs text-ink-soft">
                 <input type="checkbox" name="is_active" defaultChecked={p.is_active} />Activo
@@ -140,9 +144,20 @@ export default async function AdminCompetition({
                 <div>
                   <label className="label text-[10px]">Meta</label>
                   <input name="goal" type="number" className="field h-8 w-16 text-xs"
-                    defaultValue={p.category === 'sedentario' ? c.goal_sedentario : c.goal_avanzado} min={1} />
+                    defaultValue={p.category === 'inicial' ? c.goal_initial : c.goal_advanced} min={1} />
                 </div>
                 <button className="btn h-8 px-2.5 text-xs">Fijar meta</button>
+              </form>
+
+              <form action={grantWildcard} className="flex items-end gap-1.5">
+                <input type="hidden" name="competition_id" value={c.id} />
+                <input type="hidden" name="participant_id" value={p.id} />
+                <div>
+                  <label className="label text-[10px]">Comodín semana</label>
+                  <input name="week_number" type="number" className="field h-8 w-20 text-xs"
+                    defaultValue={currentWeek} min={1} max={c.total_weeks} />
+                </div>
+                <button className="btn h-8 px-2.5 text-xs">Dar comodín</button>
               </form>
 
               {p.user_id && (
@@ -178,8 +193,14 @@ export default async function AdminCompetition({
           <p className="eyebrow mb-2.5">Comodines usados</p>
           <ul className="mb-6 space-y-1.5">
             {wildcards.map(w => (
-              <li key={w.id} className="card flex items-center justify-between p-2.5 text-[13px]">
-                <span>{nameOf.get(w.participant_id) ?? '—'} · semana {w.week_number}</span>
+              <li key={w.id} className="card flex items-center justify-between gap-2 p-2.5 text-[13px]">
+                <span className="min-w-0 flex-1 truncate">
+                  {nameOf.get(w.participant_id) ?? '—'} · semana {w.week_number}
+                  <span className={`chip ml-2 ${w.is_admin_grant
+                    ? 'bg-navy-800 text-white' : 'bg-ice-sunk text-ink-soft'}`}>
+                    {w.is_admin_grant ? 'Admin' : 'Propio'}
+                  </span>
+                </span>
                 <form action={deleteWildcard}>
                   <input type="hidden" name="wildcard_id" value={w.id} />
                   <input type="hidden" name="competition_id" value={c.id} />
@@ -199,14 +220,19 @@ export default async function AdminCompetition({
         <ul className="space-y-1.5">
           {workouts.map(w => (
             <li key={w.id} className="card flex items-center gap-2.5 p-2.5">
-              {w.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <a href={w.photo_url} target="_blank" rel="noreferrer">
-                  <img src={w.photo_url} alt="" className="h-9 w-9 rounded object-cover" />
-                </a>
-              ) : (
-                <div className="h-9 w-9 rounded bg-ice-sunk" />
-              )}
+              {(() => {
+                const photos = photosOf(w);
+                return photos.length ? (
+                  <div className="flex gap-1">
+                    {photos.slice(0, 3).map((src, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <a key={i} href={src} target="_blank" rel="noreferrer">
+                        <img src={src} alt="" className="h-9 w-9 rounded object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                ) : <div className="h-9 w-9 rounded bg-ice-sunk" />;
+              })()}
               <div className="min-w-0 flex-1 text-[13px]">
                 <p className="truncate font-medium">{nameOf.get(w.participant_id) ?? '—'}</p>
                 <p className="text-xs text-ink-faint">

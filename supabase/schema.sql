@@ -39,8 +39,9 @@ create table if not exists public.competitions (
   name                  text not null,
   start_date            date not null,
   end_date              date,
-  goal_sedentario       int  not null default 2,
-  goal_avanzado         int  not null default 3,
+  goal_initial          int  not null default 2,
+  goal_advanced         int  not null default 3,
+  total_weeks           int  not null default 12 check (total_weeks between 1 and 52),
   max_weekly            int  not null default 6,
   bonus_goal_met        int  not null default 2,
   bonus_goal_exceeded   int  not null default 1,
@@ -63,7 +64,7 @@ create table if not exists public.participants (
   nickname        text,
   avatar_url      text,
   team            text not null check (team in ('A','B')),
-  category        text not null check (category in ('sedentario','avanzado')),
+  category        text not null check (category in ('inicial','avanzada')),
   user_id         uuid references auth.users(id) on delete set null,
   is_active       boolean not null default true,
   claimed_at      timestamptz,
@@ -99,6 +100,8 @@ create table if not exists public.participant_goals (
 create table if not exists public.sports (
   id          uuid primary key default gen_random_uuid(),
   name        text not null unique,
+  -- Duración mínima sugerida. Informativa: no se guarda en el registro.
+  reference   text,
   sort_order  int  not null default 100,
   is_active   boolean not null default true
 );
@@ -114,8 +117,11 @@ create table if not exists public.workouts (
   day_of_week     int  not null check (day_of_week between 1 and 7), -- 1 = lunes
   sport           text not null,
   note            text,
-  photo_url       text,
-  created_at      timestamptz not null default now()
+  photo_urls      text[] not null default '{}',
+  created_at      timestamptz not null default now(),
+  -- Al menos una foto y como máximo tres, para que el registro sea auditable.
+  constraint workouts_photos_required
+    check (coalesce(array_length(photo_urls, 1), 0) between 1 and 3)
 );
 
 create index if not exists workouts_competition_week_idx
@@ -162,6 +168,8 @@ create table if not exists public.wildcards (
   participant_id  uuid not null references public.participants(id) on delete cascade,
   week_number     int  not null check (week_number >= 1),
   reason          text,
+  -- Otorgado por el administrador: no consume el cupo de la temporada.
+  is_admin_grant  boolean not null default false,
   created_at      timestamptz not null default now(),
   unique (participant_id, week_number)
 );
@@ -178,12 +186,17 @@ declare
   cap  int;
   used int;
 begin
+  if new.is_admin_grant then
+    return new;
+  end if;
+
   select wildcards_per_person into cap
     from public.competitions where id = new.competition_id;
 
   select count(*) into used
     from public.wildcards
-   where participant_id = new.participant_id;
+   where participant_id = new.participant_id
+     and is_admin_grant = false;
 
   if used >= cap then
     raise exception 'Ya usaste tus % comodín(es) de la temporada.', cap;
@@ -320,16 +333,25 @@ create policy "subida autenticada fotos" on storage.objects
 -- =====================================================================
 -- CATÁLOGO DE DEPORTES INICIAL (reemplazable desde el panel admin)
 -- =====================================================================
-insert into public.sports (name, sort_order) values
-  ('Running / trote',      10),
-  ('Caminata',             20),
-  ('Ciclismo',             30),
-  ('Gimnasio / pesas',     40),
-  ('Funcional / crossfit', 50),
-  ('Fútbol',               60),
-  ('Natación',             70),
-  ('Tenis / pádel',        80),
-  ('Yoga / pilates',       90),
-  ('Baile',               100),
-  ('Otro',                999)
+insert into public.sports (name, reference, sort_order) values
+  ('Baile / Zumba',           '40 min',              10),
+  ('Básquetbol / Vóleibol',   '40 min',              20),
+  ('Boxeo / Artes Marciales', '40 min',              30),
+  ('Calistenia / Barras',     '45 min',              40),
+  ('Cerro / Trekking',        '45 min',              50),
+  ('Ciclismo Ruta',           '40 min',              60),
+  ('CrossFit',                '45 min',              70),
+  ('Elíptica / Escaladora',   '45 min',              80),
+  ('Escalada / Boulder',      '60 min',              90),
+  ('Funcional / HIIT',        '40 min',             100),
+  ('Fútbol',                  '40 min',             110),
+  ('Gimnasio (Pesas)',        '45 min',             120),
+  ('Kayak / SUP / Remo',      '40 min',             130),
+  ('Mountainbike',            '40 min',             140),
+  ('Pádel / Tenis',           '40 min',             150),
+  ('Pilates Reformer',        '40 min',             160),
+  ('Remo (Máquina)',          '30 min',             170),
+  ('Ski / Snowboard',         '2 horas de jornada', 180),
+  ('Spinning',                '40 min',             190),
+  ('Surf',                    '45 min en el agua',  200)
 on conflict (name) do nothing;

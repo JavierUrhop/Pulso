@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { weekNumberFor } from '@/lib/week';
+import { activeWeek, weekNumberFor, isFinished } from '@/lib/week';
 import type {
   Competition, Participant, Workout, Wildcard, ParticipantGoal, Sport,
 } from '@/lib/types';
@@ -38,7 +38,11 @@ export async function loadCompetition(competitionId: string) {
     goals: (goals.data ?? []) as ParticipantGoal[],
     sports: (sports.data ?? []) as Sport[],
     me: participants.find(p => p.user_id === user?.id) ?? null,
-    currentWeek: weekNumberFor(competition.start_date),
+    /** Semana vigente, tope en la última semana de la competencia. */
+    currentWeek: activeWeek(competition.start_date, competition.total_weeks),
+    /** Semana natural, sin tope. Útil para saber si ya terminó. */
+    calendarWeek: weekNumberFor(competition.start_date),
+    finished: isFinished(competition.start_date, competition.total_weeks),
   };
 }
 

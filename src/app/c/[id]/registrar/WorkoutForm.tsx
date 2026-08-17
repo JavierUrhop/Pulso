@@ -3,63 +3,79 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, currentDayOfWeek } from '@/lib/week';
-import type { Team } from '@/lib/types';
+import { DAY_NAMES, DAY_SHORT, currentDayOfWeek } from '@/lib/week';
+import { sportIcon, MAX_PHOTOS } from '@/lib/sports';
+import type { Team, Sport } from '@/lib/types';
 
-const SHORT = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+interface Shot { file: File; url: string }
 
 export default function WorkoutForm({
   competitionId, participantId, weekNumber, sports,
   alreadyThisWeek, maxWeekly, goal, usedWildcard, team,
 }: {
   competitionId: string; participantId: string; weekNumber: number;
-  sports: string[]; alreadyThisWeek: number; maxWeekly: number;
+  sports: Sport[]; alreadyThisWeek: number; maxWeekly: number;
   goal: number; usedWildcard: boolean; team: Team;
 }) {
   const router = useRouter();
   const [day, setDay] = useState(currentDayOfWeek());
-  const [sport, setSport] = useState(sports[0] ?? '');
+  const [sport, setSport] = useState(sports[0]?.name ?? '');
   const [note, setNote] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const atCap = alreadyThisWeek >= maxWeekly;
   const next = alreadyThisWeek + 1;
   const accent = team === 'A' ? 'bg-teamA' : 'bg-teamB';
+  const reference = sports.find(s => s.name === sport)?.reference;
 
-  function pick(f: File | null) {
-    setFile(f); setError(null);
-    setPreview(f ? URL.createObjectURL(f) : null);
+  function addFiles(list: FileList | null) {
+    if (!list?.length) return;
+    setError(null);
+
+    const room = MAX_PHOTOS - shots.length;
+    if (room <= 0) return setError(`Máximo ${MAX_PHOTOS} fotos por entrenamiento.`);
+
+    const incoming = Array.from(list).slice(0, room);
+    const tooBig = incoming.find(f => f.size > 8 * 1024 * 1024);
+    if (tooBig) return setError('Hay una foto de más de 8 MB. Prueba con una más liviana.');
+
+    setShots(prev => [...prev, ...incoming.map(f => ({ file: f, url: URL.createObjectURL(f) }))]);
+  }
+
+  function removeShot(i: number) {
+    setShots(prev => {
+      URL.revokeObjectURL(prev[i].url);
+      return prev.filter((_, idx) => idx !== i);
+    });
+    setError(null);
   }
 
   async function save() {
     if (!sport) return setError('Elige un deporte.');
-    setBusy(true); setError(null);
+    if (shots.length === 0) return setError('Sube al menos una foto de respaldo.');
 
+    setBusy(true);
+    setError(null);
     const supabase = createClient();
-    let photoUrl: string | null = null;
 
-    if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        setBusy(false);
-        return setError('La foto pesa más de 8 MB. Prueba con una más liviana.');
-      }
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${competitionId}/${participantId}/${Date.now()}.${ext}`;
-      const up = await supabase.storage.from('workout-photos').upload(path, file);
+    const urls: string[] = [];
+    for (const [i, shot] of shots.entries()) {
+      const ext = shot.file.name.split('.').pop() || 'jpg';
+      const path = `${competitionId}/${participantId}/${Date.now()}-${i}.${ext}`;
+      const up = await supabase.storage.from('workout-photos').upload(path, shot.file);
       if (up.error) {
         setBusy(false);
-        return setError('No se pudo subir la foto. Puedes guardar sin ella.');
+        return setError('No se pudo subir una de las fotos. Intenta de nuevo.');
       }
-      photoUrl = supabase.storage.from('workout-photos').getPublicUrl(path).data.publicUrl;
+      urls.push(supabase.storage.from('workout-photos').getPublicUrl(path).data.publicUrl);
     }
 
     const { error } = await supabase.from('workouts').insert({
       competition_id: competitionId, participant_id: participantId,
       week_number: weekNumber, day_of_week: day, sport,
-      note: note.trim() || null, photo_url: photoUrl,
+      note: note.trim() || null, photo_urls: urls,
     });
 
     setBusy(false);
@@ -95,7 +111,7 @@ export default function WorkoutForm({
       <div>
         <p className="label">Día</p>
         <div className="grid grid-cols-7 gap-1.5">
-          {SHORT.map((d, i) => {
+          {DAY_SHORT.map((d, i) => {
             const val = i + 1;
             const on = day === val;
             return (
@@ -113,47 +129,67 @@ export default function WorkoutForm({
       </div>
 
       <div>
-        <p className="label">Deporte</p>
-        <div className="flex flex-wrap gap-1.5">
-          {sports.map(s => (
-            <button key={s} onClick={() => { setSport(s); setError(null); }}
-              aria-pressed={sport === s}
-              className={`rounded-xl border px-3 py-2 text-[13px] font-semibold transition ${
-                sport === s ? 'border-navy-800 bg-navy-800 text-white'
-                            : 'border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
-              {s}
-            </button>
-          ))}
+        <label className="label" htmlFor="sport">Deporte</label>
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ice-sunk text-xl">
+            {sportIcon(sport)}
+          </span>
+          <select id="sport" className="field flex-1" value={sport}
+            onChange={e => { setSport(e.target.value); setError(null); }}>
+            {sports.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+          </select>
         </div>
+        {reference && (
+          <p className="mt-1.5 text-[11px] text-ink-faint">
+            Referencia sugerida: {reference}. Es orientativa, no se guarda en el registro.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <p className="label mb-0">Fotos de respaldo</p>
+          <span className={`text-[11px] font-semibold ${
+            shots.length ? 'text-ink-faint' : 'text-teamA'}`}>
+            {shots.length}/{MAX_PHOTOS} · obligatorio
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {shots.map((s, i) => (
+            <div key={s.url} className="relative aspect-square overflow-hidden rounded-xl border border-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={s.url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+              <button onClick={() => removeShot(i)} aria-label={`Quitar foto ${i + 1}`}
+                className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full
+                           bg-navy-900/75 text-xs font-bold text-white">
+                ✕
+              </button>
+            </div>
+          ))}
+
+          {shots.length < MAX_PHOTOS && (
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center
+                              gap-1 rounded-xl border-2 border-dashed border-line bg-ice-card
+                              text-center transition hover:bg-ice-sunk">
+              <span className="text-xl leading-none" aria-hidden>＋</span>
+              <span className="px-1 text-[10px] font-semibold leading-tight text-ink-soft">
+                Cámara o galería
+              </span>
+              <input type="file" accept="image/*" multiple className="hidden"
+                onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
+            </label>
+          )}
+        </div>
+        <p className="mt-1.5 text-[11px] text-ink-faint">
+          Puedes tomar la foto en el momento o elegirla de tu galería.
+        </p>
       </div>
 
       <div>
         <label className="label" htmlFor="note">Nota (opcional)</label>
         <input id="note" className="field" value={note} maxLength={120}
           onChange={e => setNote(e.target.value)} placeholder="8 km por el parque" />
-      </div>
-
-      <div>
-        <p className="label">Foto de respaldo (opcional)</p>
-        <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl2
-                          border-2 border-dashed border-line bg-ice-card px-4 py-7 text-center
-                          transition hover:bg-ice-sunk">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Vista previa" className="h-32 rounded-lg object-cover" />
-          ) : (
-            <>
-              <span className="text-sm font-semibold text-ink-soft">Toca para subir una foto</span>
-              <span className="mt-0.5 text-[11px] text-ink-faint">Hace el registro auditable</span>
-            </>
-          )}
-          <input type="file" accept="image/*" capture="environment" className="hidden"
-            onChange={e => pick(e.target.files?.[0] ?? null)} />
-        </label>
-        {preview && (
-          <button className="mt-2 text-xs font-medium text-ink-faint underline underline-offset-2"
-            onClick={() => pick(null)}>Quitar foto</button>
-        )}
       </div>
 
       <div className="rounded-xl border border-line bg-ice-card px-3.5 py-3">
@@ -171,7 +207,8 @@ export default function WorkoutForm({
         </p>
       )}
 
-      <button className="btn btn-primary w-full text-base" onClick={save} disabled={busy}>
+      <button className="btn btn-primary w-full text-base" onClick={save}
+        disabled={busy || shots.length === 0}>
         {busy ? 'Guardando…' : 'Guardar entrenamiento'}
       </button>
     </div>

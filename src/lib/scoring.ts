@@ -24,9 +24,9 @@ import type {
  */
 
 export function baseGoalFor(competition: Competition, participant: Participant): number {
-  return participant.category === 'sedentario'
-    ? competition.goal_sedentario
-    : competition.goal_avanzado;
+  return participant.category === 'inicial'
+    ? competition.goal_initial
+    : competition.goal_advanced;
 }
 
 /**
