@@ -102,3 +102,13 @@ export function currentDayOfWeek(when: Date = new Date()): number {
   const dow = dayOf(santiagoDateString(when)).getUTCDay();
   return dow === 0 ? 7 : dow;
 }
+
+/** Lunes de la semana en curso en Chile, como 'YYYY-MM-DD'. */
+export function mondayOfChile(when: Date = new Date()): string {
+  return mondayOf(dayOf(santiagoDateString(when))).toISOString().slice(0, 10);
+}
+
+/** Lunes de la semana que contiene una fecha dada. */
+export function mondayOfDate(date: string): string {
+  return mondayOf(dayOf(date)).toISOString().slice(0, 10);
+}

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { isAdmin, login, logout, createCompetition } from './actions';
 import { createAdminClient } from '@/lib/supabase/server';
-import { weekNumberFor, endDateOf, formatDate } from '@/lib/week';
+import { weekNumberFor, endDateOf, formatDate, mondayOfChile } from '@/lib/week';
+import StartDatePicker from '@/components/StartDatePicker';
+import CoverPicker from '@/components/CoverPicker';
 import { BackLink } from '@/components/ui';
 import ErrorBanner from '@/components/ErrorBanner';
 import type { Competition } from '@/lib/types';
@@ -18,7 +20,8 @@ export default async function AdminHome({
     .order('start_date', { ascending: false });
   const competitions = (data ?? []) as Competition[];
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Por defecto, el lunes de la semana en curso en Chile.
+  const defaultStart = mondayOfChile();
 
   return (
     <>
@@ -46,17 +49,11 @@ export default async function AdminHome({
             <input id="name" name="name" className="field" required
               placeholder="Pulso 2026" />
           </div>
+
+          <CoverPicker />
+
           <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label className="label" htmlFor="start_date">Fecha de inicio</label>
-              <input id="start_date" name="start_date" type="date" className="field"
-                defaultValue={today} required />
-            </div>
-            <div>
-              <label className="label" htmlFor="total_weeks">Duración (semanas)</label>
-              <input id="total_weeks" name="total_weeks" type="number" className="field"
-                defaultValue={12} min={1} max={52} required />
-            </div>
+            <StartDatePicker defaultValue={defaultStart} weeks={12} />
             <div>
               <label className="label" htmlFor="goal_initial">Meta inicial</label>
               <input id="goal_initial" name="goal_initial" type="number" className="field"
@@ -83,10 +80,7 @@ export default async function AdminHome({
                 className="field" defaultValue={1} min={0} />
             </div>
           </div>
-          <p className="rounded-xl bg-ice-sunk px-3.5 py-2.5 text-[0.75rem] text-ink-soft">
-            La semana 1 corre del lunes 00:00 al domingo 23:59, hora de Chile. Si la fecha de
-            inicio cae a mitad de semana, la competencia parte igual el lunes de esa semana.
-          </p>
+
           <button className="btn btn-primary w-full">Crear competencia</button>
         </form>
       </section>
@@ -104,8 +98,14 @@ export default async function AdminHome({
         <ul className="space-y-2">
           {competitions.map(c => (
             <li key={c.id}>
-              <Link href={`/admin/${c.id}`} className="card flex items-center justify-between p-3.5 transition hover:bg-ice-sunk">
-                <div className="min-w-0">
+              <Link href={`/admin/${c.id}`} className="card flex items-center gap-3 p-3.5 transition hover:bg-ice-sunk">
+                {c.cover_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.cover_url} alt="" className="h-12 w-16 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-12 w-16 shrink-0 rounded-lg bg-ice-sunk" />
+                )}
+                <div className="min-w-0 flex-1">
                   <p className="display truncate text-base leading-tight">{c.name}</p>
                   <p className="mt-0.5 text-xs text-ink-faint">
                     Semana {Math.min(weekNumberFor(c.start_date), c.total_weeks)} de {c.total_weeks}

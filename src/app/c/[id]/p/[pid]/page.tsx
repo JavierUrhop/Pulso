@@ -169,9 +169,17 @@ export default async function ParticipantDetail({
                 </p>
                 {w.note && <p className="truncate text-[0.6875rem] text-ink-faint">{w.note}</p>}
               </div>
-              <span className="score shrink-0 rounded-md bg-win/12 px-2 py-1 text-xs font-bold text-win">
-                +1
-              </span>
+              {isMe ? (
+                <Link href={`/c/${params.id}/w/${w.id}`}
+                  className="shrink-0 rounded-lg border border-line px-2.5 py-1.5
+                             text-[0.6875rem] font-semibold text-ink-soft hover:bg-ice-sunk">
+                  Editar
+                </Link>
+              ) : (
+                <span className="score shrink-0 rounded-md bg-win/12 px-2 py-1 text-xs font-bold text-win">
+                  +1
+                </span>
+              )}
             </li>
           ))}
         </ul>

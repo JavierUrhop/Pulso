@@ -102,6 +102,8 @@ Antes de presionar Deploy, abre **Environment Variables** y agrega las cuatro:
 - En **Site URL** pega la URL de Vercel
 - En **Redirect URLs** agrega `https://tu-url.vercel.app/**`
 
+Esto último es lo que hace funcionar el enlace de recuperación de contraseña. Si no está, el correo llega pero el enlace no abre la app.
+
 De aquí en adelante, cada `git push` a `main` republica la app automáticamente.
 
 ---
@@ -155,3 +157,5 @@ El resto de la app no cambia.
 | El panel no acepta la clave | Falta `ADMIN_PASSCODE` en Vercel, o el deploy fue antes de agregarla |
 | Las fotos no se ven | Los buckets no quedaron públicos; vuelve a correr la sección STORAGE |
 | Cambié una variable y no pasa nada | Vercel requiere **Redeploy** después de cambiar variables |
+| El enlace de recuperación no abre la app | Falta la Redirect URL en Supabase (paso 4 de la Parte 3) |
+| Los registros quedaron en la semana equivocada | Corrige la fecha de inicio y usa **Corregir numeración** en el panel |

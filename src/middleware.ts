@@ -27,6 +27,10 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = path.startsWith('/login') || path.startsWith('/registro');
 
+  // La recuperación de contraseña queda siempre accesible: el enlace del
+  // correo crea una sesión temporal y no debe redirigir a la portada.
+  if (path.startsWith('/recuperar')) return response;
+
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';

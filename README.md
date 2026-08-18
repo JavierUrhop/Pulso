@@ -41,6 +41,8 @@ Cada deporte del catálogo trae una duración de referencia (por ejemplo, 40 min
 
 Si el deporte no está en la lista, se elige **Otro** y se escribe. Queda guardado en el catálogo para todos y aparece desde ese momento en la pestaña Deportes.
 
+Cada persona puede **editar o eliminar** sus propios registros desde su bitácora: cambiar el día, el deporte, la nota o las fotos. Al eliminar se pide confirmación explícita, porque implica perder el punto de esa sesión.
+
 ### Fotos y almacenamiento
 
 Las fotos se comprimen en el teléfono **antes** de subirse: se reducen a 1280 px de lado mayor y se guardan como JPEG de calidad 0.8. Una foto de celular baja de unos 3 MB a entre 200 y 350 KB, sin que se note en pantalla.
@@ -106,6 +108,25 @@ node scripts/test-week.mjs                                    # 11 casos de fech
 ```
 
 El primero cubre bonos, topes, comodín, per cápita, escalado de metas y acumulado. El segundo cubre el cálculo de semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano.
+
+## Panel de administración
+
+Además de crear competencias y armar los equipos, permite:
+
+- **Foto de portada** por competencia, visible en el listado y detrás del marcador
+- **Metas manuales** por persona a partir de una semana concreta
+- **Comodines otorgados**, que no consumen el cupo de la persona
+- **Corregir la numeración de semanas**, con dos métodos: recalcular según la fecha real de cada registro, o desplazar todas las semanas en bloque
+- **Eliminar una competencia** completa, escribiendo su nombre para confirmar
+
+### Si las semanas quedaron corridas
+
+Pasa cuando la competencia se creó con una fecha de inicio de la semana anterior: los registros guardan el número de semana calculado en ese momento. Para arreglarlo:
+
+1. En el panel de la competencia, corrige la **fecha de inicio** al lunes correcto y guarda
+2. Usa **Recalcular según la fecha de cada registro**, o bien **Desplazar** con −1 si prefieres mover todo en bloque
+
+El formulario de creación ahora propone por defecto el lunes de la semana en curso y muestra explícitamente qué rango cubre la semana 1, para que no vuelva a ocurrir.
 
 ## Ajustes de la aplicación
 

@@ -1,11 +1,14 @@
 import { notFound } from 'next/navigation';
 import { isAdmin, updateCompetition, addParticipant, updateParticipant,
   releaseParticipant, deleteParticipant, setGoal, clearGoal,
-  deleteWorkout, deleteWildcard, grantWildcard } from '../actions';
+  deleteWorkout, deleteWildcard, grantWildcard,
+  removeCover, deleteCompetition, renumberWeeks, shiftWeeks } from '../actions';
 import { createAdminClient } from '@/lib/supabase/server';
 import { weekNumberFor, DAY_NAMES, endDateOf, formatDate } from '@/lib/week';
 import { BackLink, Avatar } from '@/components/ui';
 import { photosOf } from '@/lib/sports';
+import CoverPicker from '@/components/CoverPicker';
+import { mondayOfDate } from '@/lib/week';
 import ErrorBanner from '@/components/ErrorBanner';
 import { redirect } from 'next/navigation';
 import type { Competition, Participant, Workout, Wildcard, ParticipantGoal } from '@/lib/types';
@@ -14,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminCompetition({
   params, searchParams,
-}: { params: { id: string }; searchParams: { error?: string } }) {
+}: { params: { id: string }; searchParams: { error?: string; ok?: string } }) {
   if (!(await isAdmin())) redirect('/admin');
 
   const supabase = createAdminClient();
@@ -39,6 +42,11 @@ export default async function AdminCompetition({
     <>
       <BackLink href="/admin">Panel</BackLink>
       <ErrorBanner message={searchParams.error} />
+      {searchParams.ok && (
+        <div className="mb-4 rounded-xl border border-win/25 bg-win/10 px-3.5 py-2.5">
+          <p className="text-[0.8125rem] text-win">{searchParams.ok}</p>
+        </div>
+      )}
       <h1 className="display mb-1 mt-3 text-2xl leading-none">{c.name}</h1>
       <p className="mb-6 text-sm text-ink-soft">
         Semana {currentWeek} de {c.total_weeks} · termina el{' '}
@@ -55,6 +63,8 @@ export default async function AdminCompetition({
             <label className="label" htmlFor="name">Nombre</label>
             <input id="name" name="name" className="field" defaultValue={c.name} />
           </div>
+
+          <CoverPicker current={c.cover_url} />
           <div className="grid grid-cols-2 gap-2.5">
             <Num label="Fecha de inicio" name="start_date" type="date" value={c.start_date} />
             <Num label="Duración (semanas)" name="total_weeks" value={c.total_weeks} />
@@ -73,6 +83,48 @@ export default async function AdminCompetition({
           </label>
           <button className="btn btn-primary w-full">Guardar reglas</button>
         </form>
+
+        {c.cover_url && (
+          <form action={removeCover} className="mt-2">
+            <input type="hidden" name="id" value={c.id} />
+            <button className="text-[0.6875rem] font-medium text-ink-faint underline underline-offset-2">
+              Quitar portada
+            </button>
+          </form>
+        )}
+      </section>
+
+      {/* Corrección de semanas */}
+      <section className="card mb-6 p-4">
+        <p className="eyebrow mb-1">Corregir numeración de semanas</p>
+        <p className="mb-3 text-[0.8125rem] text-ink-soft">
+          La semana 1 parte el lunes {formatDate(mondayOfDate(c.start_date))}. Si los registros
+          quedaron con la numeración de una fecha de inicio anterior, corrígelos aquí.
+        </p>
+
+        <div className="space-y-2.5">
+          <form action={renumberWeeks}>
+            <input type="hidden" name="competition_id" value={c.id} />
+            <button className="btn w-full">Recalcular según la fecha de cada registro</button>
+            <p className="mt-1 text-[0.6875rem] text-ink-faint">
+              Usa el momento en que se guardó cada entrenamiento. Es lo más fiable si ya
+              corregiste la fecha de inicio arriba.
+            </p>
+          </form>
+
+          <form action={shiftWeeks} className="flex items-end gap-2">
+            <input type="hidden" name="competition_id" value={c.id} />
+            <div className="w-28">
+              <label className="label" htmlFor="delta">Mover semanas</label>
+              <input id="delta" name="delta" type="number" className="field" defaultValue={-1} />
+            </div>
+            <button className="btn flex-1">Desplazar todos los registros</button>
+          </form>
+          <p className="text-[0.6875rem] text-ink-faint">
+            Con −1, lo que figura como semana 2 pasa a semana 1. Afecta entrenamientos,
+            comodines y metas manuales.
+          </p>
+        </div>
       </section>
 
       {/* Agregar integrante */}
@@ -211,6 +263,26 @@ export default async function AdminCompetition({
           </ul>
         </>
       )}
+
+      {/* Zona de riesgo */}
+      <section className="card mb-6 border-teamA/30 p-4">
+        <p className="eyebrow mb-1 text-teamA">Eliminar competencia</p>
+        <p className="mb-3 text-[0.8125rem] text-ink-soft">
+          Borra la competencia y todo lo que contiene: integrantes, entrenamientos, comodines
+          y metas. No se puede deshacer. Para confirmar, escribe el nombre exacto.
+        </p>
+        <form action={deleteCompetition} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="id" value={c.id} />
+          <div className="min-w-[180px] flex-1">
+            <label className="label" htmlFor="confirm_name">Nombre de la competencia</label>
+            <input id="confirm_name" name="confirm_name" className="field"
+              placeholder={c.name} autoComplete="off" required />
+          </div>
+          <button className="btn border-teamA bg-teamA text-white hover:bg-teamA/90">
+            Eliminar definitivamente
+          </button>
+        </form>
+      </section>
 
       {/* Registros recientes */}
       <p className="eyebrow mb-2.5">Últimos registros</p>

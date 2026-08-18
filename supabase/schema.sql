@@ -48,6 +48,7 @@ create table if not exists public.competitions (
   bonus_team_sweep      int  not null default 5,
   streak_to_raise       int  not null default 3,
   wildcards_per_person  int  not null default 1,
+  cover_url             text,
   is_active             boolean not null default true,
   created_at            timestamptz not null default now()
 );
@@ -282,6 +283,22 @@ create policy workouts_insert_own on public.workouts
     )
   );
 
+drop policy if exists workouts_update_own on public.workouts;
+create policy workouts_update_own on public.workouts
+  for update to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+       where p.id = participant_id and p.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.participants p
+       where p.id = participant_id and p.user_id = auth.uid()
+    )
+  );
+
 drop policy if exists workouts_delete_own on public.workouts;
 create policy workouts_delete_own on public.workouts
   for delete to authenticated
@@ -321,14 +338,18 @@ insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('competition-covers', 'competition-covers', true)
+on conflict (id) do nothing;
+
 drop policy if exists "lectura publica fotos" on storage.objects;
 create policy "lectura publica fotos" on storage.objects
-  for select using (bucket_id in ('workout-photos','avatars'));
+  for select using (bucket_id in ('workout-photos','avatars','competition-covers'));
 
 drop policy if exists "subida autenticada fotos" on storage.objects;
 create policy "subida autenticada fotos" on storage.objects
   for insert to authenticated
-  with check (bucket_id in ('workout-photos','avatars'));
+  with check (bucket_id in ('workout-photos','avatars','competition-covers'));
 
 -- =====================================================================
 -- CATÁLOGO DE DEPORTES INICIAL (reemplazable desde el panel admin)

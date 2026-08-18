@@ -15,6 +15,7 @@ export interface Competition {
   bonus_team_sweep: number;
   streak_to_raise: number;
   wildcards_per_person: number;
+  cover_url: string | null;
   is_active: boolean;
 }
 

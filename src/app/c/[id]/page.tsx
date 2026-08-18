@@ -105,9 +105,17 @@ export default async function Dashboard({
 
   return (
     <>
-      <section className="-mx-4 -mt-5 mb-4 bg-navy-grad px-4 pb-5 pt-6 text-white
+      <section className="relative -mx-4 -mt-5 mb-4 overflow-hidden bg-navy-grad px-4 pb-5 pt-6 text-white
                           [padding-top:calc(1.5rem+env(safe-area-inset-top))]">
-        <div className="mx-auto max-w-2xl">
+        {competition.cover_url && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={competition.cover_url} alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-25" />
+            <div className="absolute inset-0 bg-gradient-to-b from-navy-900/70 to-navy-800/85" />
+          </>
+        )}
+        <div className="relative mx-auto max-w-2xl">
           <div className="flex items-center justify-between">
             <Link href="/"><Brand dark /></Link>
             <span className="rounded-full bg-white/15 px-2.5 py-1 text-[0.625rem] font-bold uppercase tracking-[0.1em]">

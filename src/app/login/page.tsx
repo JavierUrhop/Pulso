@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +19,24 @@ function LoginForm() {
     setNotice(null);
 
     if (!email.trim()) return setError('Escribe tu correo.');
+
+    const supabase = createClient();
+
+    // Recuperación: solo necesita el correo.
+    if (mode === 'reset') {
+      setBusy(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/recuperar`,
+      });
+      setBusy(false);
+      if (error) return setError(traducir(error.message));
+      setNotice('Si ese correo tiene cuenta, le llegará un enlace para cambiar la contraseña. Revisa también la carpeta de spam.');
+      return;
+    }
+
     if (password.length < 6) return setError('La contraseña necesita al menos 6 caracteres.');
 
     setBusy(true);
-    const supabase = createClient();
 
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({ email: email.trim(), password });
@@ -50,7 +64,9 @@ function LoginForm() {
         <h1 className="display mt-4 text-3xl leading-none tracking-[0.06em]">Pulso</h1>
       </div>
       <p className="text-center text-sm text-ink-soft">
-        {mode === 'login' ? 'Entra con tu cuenta.' : 'Crea tu cuenta para participar.'}
+        {mode === 'login' ? 'Entra con tu cuenta.'
+          : mode === 'signup' ? 'Crea tu cuenta para participar.'
+          : 'Te enviaremos un enlace para crear una contraseña nueva.'}
       </p>
 
       <div className="mt-7 space-y-4">
@@ -61,13 +77,15 @@ function LoginForm() {
             onChange={e => { setEmail(e.target.value); setError(null); }}
             placeholder="nombre@empresa.cl" />
         </div>
-        <div>
-          <label className="label" htmlFor="password">Contraseña</label>
-          <input id="password" type="password" className="field" value={password}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            onChange={e => { setPassword(e.target.value); setError(null); }}
-            onKeyDown={e => e.key === 'Enter' && submit()} />
-        </div>
+        {mode !== 'reset' && (
+          <div>
+            <label className="label" htmlFor="password">Contraseña</label>
+            <input id="password" type="password" className="field" value={password}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              onChange={e => { setPassword(e.target.value); setError(null); }}
+              onKeyDown={e => e.key === 'Enter' && submit()} />
+          </div>
+        )}
 
         {error && (
           <p className="rounded-xl border border-teamA/25 bg-teamA-soft px-3.5 py-2.5 text-[0.8125rem] text-teamA-ink">
@@ -81,14 +99,33 @@ function LoginForm() {
         )}
 
         <button className="btn btn-primary w-full text-base" onClick={submit} disabled={busy}>
-          {busy ? 'Un momento…' : mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+          {busy ? 'Un momento…'
+            : mode === 'login' ? 'Entrar'
+            : mode === 'signup' ? 'Crear cuenta'
+            : 'Enviar enlace de recuperación'}
         </button>
 
-        <button
-          className="w-full text-[0.8125rem] font-medium text-ink-soft underline underline-offset-2"
-          onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); }}>
-          {mode === 'login' ? 'No tengo cuenta, quiero registrarme' : 'Ya tengo cuenta'}
-        </button>
+        <div className="space-y-2 pt-1">
+          {mode !== 'reset' && (
+            <button
+              className="w-full text-[0.8125rem] font-medium text-ink-soft underline underline-offset-2"
+              onClick={() => {
+                setMode(mode === 'login' ? 'signup' : 'login');
+                setError(null); setNotice(null);
+              }}>
+              {mode === 'login' ? 'No tengo cuenta, quiero registrarme' : 'Ya tengo cuenta'}
+            </button>
+          )}
+
+          <button
+            className="w-full text-[0.8125rem] font-medium text-ink-faint underline underline-offset-2"
+            onClick={() => {
+              setMode(mode === 'reset' ? 'login' : 'reset');
+              setError(null); setNotice(null);
+            }}>
+            {mode === 'reset' ? 'Volver a iniciar sesión' : 'Olvidé mi contraseña'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -98,6 +135,9 @@ function traducir(msg: string): string {
   if (msg.includes('Invalid login credentials')) return 'Correo o contraseña incorrectos.';
   if (msg.includes('already registered')) return 'Ese correo ya tiene cuenta. Inicia sesión.';
   if (msg.includes('Email not confirmed')) return 'Confirma tu correo antes de entrar.';
+  if (msg.includes('rate limit') || msg.includes('too many')) {
+    return 'Se enviaron demasiados correos seguidos. Espera unos minutos.';
+  }
   return msg;
 }
 

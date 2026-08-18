@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { weekNumberFor, mondayOfChile } from '@/lib/week';
 
 const COOKIE = 'admin_ok';
 
@@ -47,6 +48,23 @@ export async function logout() {
 
 // ---------------------------------------------------------------- competencias
 
+/** Sube una portada al bucket público y devuelve su URL. */
+async function uploadCover(
+  supabase: ReturnType<typeof createAdminClient>,
+  file: File | null,
+): Promise<string | null> {
+  if (!file || file.size === 0) return null;
+
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('competition-covers')
+    .upload(path, file, { contentType: file.type || 'image/jpeg' });
+
+  if (error) return null;
+  return supabase.storage.from('competition-covers').getPublicUrl(path).data.publicUrl;
+}
+
 export async function createCompetition(formData: FormData) {
   const supabase = await requireAdmin();
   const name = String(formData.get('name') ?? '').trim();
@@ -54,9 +72,12 @@ export async function createCompetition(formData: FormData) {
 
   if (!name || !startDate) fail('/admin', 'Nombre y fecha de inicio son obligatorios.');
 
+  const cover = await uploadCover(supabase, formData.get('cover') as File | null);
+
   const { error } = await supabase.from('competitions').insert({
     name,
     start_date: startDate,
+    cover_url: cover,
     goal_initial: Number(formData.get('goal_initial') ?? 2),
     goal_advanced: Number(formData.get('goal_advanced') ?? 3),
     total_weeks: Number(formData.get('total_weeks') ?? 12),
@@ -74,7 +95,10 @@ export async function updateCompetition(formData: FormData) {
   const supabase = await requireAdmin();
   const id = String(formData.get('id'));
 
+  const cover = await uploadCover(supabase, formData.get('cover') as File | null);
+
   const { error } = await supabase.from('competitions').update({
+    ...(cover ? { cover_url: cover } : {}),
     name: String(formData.get('name') ?? '').trim(),
     start_date: String(formData.get('start_date')),
     goal_initial: Number(formData.get('goal_initial')),
@@ -244,6 +268,116 @@ export async function deleteWildcard(formData: FormData) {
   if (error) fail(`/admin/${competitionId}`, error.message);
   revalidatePath(`/admin/${competitionId}`);
   revalidatePath(`/c/${competitionId}`);
+}
+
+export async function removeCover(formData: FormData) {
+  const supabase = await requireAdmin();
+  const id = String(formData.get('id'));
+
+  const { error } = await supabase.from('competitions')
+    .update({ cover_url: null }).eq('id', id);
+
+  if (error) fail(`/admin/${id}`, error.message);
+  revalidatePath(`/admin/${id}`);
+  revalidatePath('/');
+}
+
+/**
+ * Elimina una competencia con todo su contenido.
+ * Las tablas hijas tienen "on delete cascade", así que se van participantes,
+ * entrenamientos, comodines y metas. Es irreversible.
+ */
+export async function deleteCompetition(formData: FormData) {
+  const supabase = await requireAdmin();
+  const id = String(formData.get('id'));
+  const typed = String(formData.get('confirm_name') ?? '').trim();
+
+  const { data: comp } = await supabase
+    .from('competitions').select('name').eq('id', id).single();
+
+  if (!comp) fail('/admin', 'Esa competencia ya no existe.');
+  if (typed !== comp.name) {
+    fail(`/admin/${id}`, 'Para eliminar, escribe el nombre exacto de la competencia.');
+  }
+
+  const { error } = await supabase.from('competitions').delete().eq('id', id);
+  if (error) fail(`/admin/${id}`, error.message);
+
+  revalidatePath('/admin');
+  revalidatePath('/');
+  redirect('/admin');
+}
+
+// ------------------------------------------------------- corrección de semanas
+
+/**
+ * Recalcula la semana de cada registro a partir de la fecha en que se creó
+ * y de la fecha de inicio vigente. Sirve cuando se corrige el inicio de la
+ * competencia y los registros quedaron con la numeración antigua.
+ */
+export async function renumberWeeks(formData: FormData) {
+  const supabase = await requireAdmin();
+  const id = String(formData.get('competition_id'));
+
+  const { data: comp } = await supabase
+    .from('competitions').select('start_date, total_weeks').eq('id', id).single();
+  if (!comp) fail('/admin', 'No se encontró la competencia.');
+
+  const { data: works } = await supabase
+    .from('workouts').select('id, created_at, week_number').eq('competition_id', id);
+
+  let changed = 0;
+  for (const w of works ?? []) {
+    const week = Math.min(
+      weekNumberFor(comp.start_date, new Date(w.created_at)),
+      comp.total_weeks,
+    );
+    if (week !== w.week_number) {
+      const { error } = await supabase.from('workouts')
+        .update({ week_number: week }).eq('id', w.id);
+      if (error) fail(`/admin/${id}`, error.message);
+      changed += 1;
+    }
+  }
+
+  revalidatePath(`/admin/${id}`);
+  revalidatePath(`/c/${id}`);
+  redirect(`/admin/${id}?ok=${encodeURIComponent(
+    changed === 0 ? 'Las semanas ya estaban correctas.'
+                  : `Se recalcularon ${changed} registros.`)}`);
+}
+
+/**
+ * Desplaza todas las semanas registradas. Útil para corregir de una vez
+ * cuando la competencia se creó con una semana de desfase.
+ */
+export async function shiftWeeks(formData: FormData) {
+  const supabase = await requireAdmin();
+  const id = String(formData.get('competition_id'));
+  const delta = Number(formData.get('delta'));
+
+  if (!delta || Number.isNaN(delta)) fail(`/admin/${id}`, 'Indica cuántas semanas mover.');
+
+  const tables = ['workouts', 'wildcards', 'participant_goals'] as const;
+  let moved = 0;
+
+  for (const table of tables) {
+    const { data: rows } = await supabase
+      .from(table).select('id, week_number').eq('competition_id', id);
+
+    for (const r of rows ?? []) {
+      const next = Math.max(1, r.week_number + delta);
+      if (next === r.week_number) continue;
+      const { error } = await supabase.from(table)
+        .update({ week_number: next }).eq('id', r.id);
+      if (error) fail(`/admin/${id}`, error.message);
+      moved += 1;
+    }
+  }
+
+  revalidatePath(`/admin/${id}`);
+  revalidatePath(`/c/${id}`);
+  redirect(`/admin/${id}?ok=${encodeURIComponent(`Se movieron ${moved} registros.`)}`);
 }
 
 // ---------------------------------------------------------------- deportes

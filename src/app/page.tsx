@@ -49,7 +49,13 @@ export default async function Home() {
             return (
               <Link key={c.id} href={`/c/${c.id}`}
                 className="card flex items-center gap-3 p-4 transition hover:bg-ice-sunk">
-                <span className="team-bar bg-navy-800" />
+                {c.cover_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.cover_url} alt=""
+                    className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <span className="team-bar bg-navy-800" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="display truncate text-lg leading-tight">{c.name}</p>
                   <p className="mt-1 text-[0.6875rem] uppercase tracking-[0.08em] text-ink-faint">
