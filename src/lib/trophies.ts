@@ -6,6 +6,13 @@ import type {
   Competition, Participant, Workout, Wildcard, ParticipantGoal,
 } from '@/lib/types';
 
+export interface SportTally {
+  name: string;
+  count: number;
+  /** Última semana en que lo practicó, para ordenar por novedad si hace falta. */
+  lastWeek: number;
+}
+
 export interface CompetitionTrophies {
   competition: Competition;
   participant: Participant;
@@ -15,8 +22,8 @@ export interface CompetitionTrophies {
   weeksExceeded: number;
   wildcards: number;
   medals: Medal[];
-  /** Deporte más repetido, para darle carácter al perfil. */
-  favouriteSport: { name: string; count: number } | null;
+  /** Todo lo que ha practicado en esta competencia, de más a menos. */
+  sports: SportTally[];
 }
 
 export interface TrophyRoom {
@@ -29,6 +36,8 @@ export interface TrophyRoom {
   totalSuperada: number;
   competitions: CompetitionTrophies[];
   medals: Medal[];
+  /** Deportes practicados sumando todas las competencias. */
+  sports: SportTally[];
 }
 
 /**
@@ -90,22 +99,34 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
       if (count < goal) continue;
 
       const exceeded = count >= goal + 1;
-      if (exceeded) weeksExceeded += 1;
       weeksMet += 1;
 
-      // Una medalla por semana: la de mayor rango que corresponda.
-      medals.push({
-        kind: exceeded ? 'superada' : 'meta',
+      const base = {
         week: wk,
         competitionId: competition.id,
         competitionName: competition.name,
         startDate: competition.start_date,
-      });
+      };
+
+      // Cumplir la meta siempre da su medalla.
+      medals.push({ kind: 'meta', ...base });
+
+      // Superarla da una segunda, además de la anterior.
+      if (exceeded) {
+        weeksExceeded += 1;
+        medals.push({ kind: 'superada', ...base });
+      }
     }
 
-    const tally = new Map<string, number>();
-    for (const w of mine) tally.set(w.sport, (tally.get(w.sport) ?? 0) + 1);
-    const favourite = [...tally.entries()].sort((a, b) => b[1] - a[1])[0];
+    const tally = new Map<string, SportTally>();
+    for (const w of mine) {
+      const row = tally.get(w.sport) ?? { name: w.sport, count: 0, lastWeek: 0 };
+      row.count += 1;
+      row.lastWeek = Math.max(row.lastWeek, w.week_number);
+      tally.set(w.sport, row);
+    }
+    const sports = [...tally.values()]
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'es'));
 
     rows.push({
       competition,
@@ -115,8 +136,9 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
       weeksMet,
       weeksExceeded,
       wildcards: myCards.length,
+      // Lo más reciente primero, y dentro de una semana la medalla mayor arriba.
       medals: medals.slice().reverse(),
-      favouriteSport: favourite ? { name: favourite[0], count: favourite[1] } : null,
+      sports,
     });
   }
 
@@ -125,6 +147,17 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
 
   const newest = rows[0]?.participant ?? participants[0];
   const allMedals = rows.flatMap(r => r.medals);
+
+  // Deportes sumando todas las competencias.
+  const global = new Map<string, SportTally>();
+  for (const r of rows) {
+    for (const sp of r.sports) {
+      const row = global.get(sp.name) ?? { name: sp.name, count: 0, lastWeek: 0 };
+      row.count += sp.count;
+      row.lastWeek = Math.max(row.lastWeek, sp.lastWeek);
+      global.set(sp.name, row);
+    }
+  }
 
   return {
     userId,
@@ -135,5 +168,7 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
     totalSuperada: allMedals.filter(m => m.kind === 'superada').length,
     competitions: rows,
     medals: allMedals,
+    sports: [...global.values()]
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'es')),
   };
 }

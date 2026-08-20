@@ -3,17 +3,17 @@ import { Avatar, CategoryChip } from '@/components/ui';
 import { MedalChip, MedalCount, MedalLegend } from '@/components/Achievements';
 import { sportIcon } from '@/lib/sports';
 import { formatDate } from '@/lib/week';
-import type { TrophyRoom as Room } from '@/lib/trophies';
+import type { TrophyRoom as Room, SportTally } from '@/lib/trophies';
 
 /**
- * Salón de trofeos: lo que ha conseguido una persona en todas sus
- * competencias. Sirve tanto para el perfil propio como para mirar el de
- * otro integrante.
+ * Salón de trofeos: todo lo que ha conseguido una persona, en todas sus
+ * competencias. Sirve igual para el perfil propio y para mirar el de otro.
  */
 export default function TrophyRoom({
   room, actions,
 }: { room: Room; actions?: React.ReactNode }) {
   const empty = room.medals.length === 0;
+  const topSport = room.sports[0];
 
   return (
     <>
@@ -36,11 +36,13 @@ export default function TrophyRoom({
           <div className="mt-4 grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-white/12 p-3 text-center">
               <span className="mx-auto grid h-9 w-9 place-items-center rounded-full
-                               bg-white/15 text-sm" aria-hidden>🏃</span>
+                               bg-white/15 text-sm" aria-hidden>
+                {topSport ? sportIcon(topSport.name) : '🏃'}
+              </span>
               <p className="score mt-1.5 font-display text-xl font-bold leading-none">
                 {room.totalWorkouts}
               </p>
-              <p className="mt-0.5 text-[0.5625rem] uppercase tracking-[0.08em] text-white/60">
+              <p className="mt-0.5 text-[0.5625rem] uppercase tracking-[0.08em] text-white/70">
                 Entrenos
               </p>
             </div>
@@ -50,20 +52,28 @@ export default function TrophyRoom({
         </div>
       </section>
 
-      {empty && (
+      {empty ? (
         <div className="card mb-5 p-6 text-center">
           <p className="display text-base">Todavía sin medallas</p>
           <p className="mx-auto mt-1.5 max-w-xs text-[0.8125rem] text-ink-soft">
-            Cada semana que alcances tu meta ganas una medalla. Si la superas, la medalla
-            sube de categoría.
+            Cada semana que alcances tu meta ganas una medalla. Si además la superas,
+            ganas las dos.
           </p>
         </div>
+      ) : (
+        <div className="mb-5"><MedalLegend /></div>
       )}
 
-      {!empty && <div className="mb-5"><MedalLegend /></div>}
+      {/* Histórico de deportes: qué tipo de cosas hace esta persona */}
+      {room.sports.length > 0 && (
+        <section className="mb-6">
+          <p className="eyebrow mb-2.5">Qué practica</p>
+          <SportList sports={room.sports} total={room.totalWorkouts} />
+        </section>
+      )}
 
       {room.competitions.map(c => (
-        <section key={c.participant.id} className="mb-5">
+        <section key={c.participant.id} className="mb-6">
           <div className="mb-2.5 flex items-center gap-2">
             <span className={`h-4 w-1 rounded-full ${
               c.participant.team === 'A' ? 'bg-teamA' : 'bg-teamB'}`} />
@@ -84,17 +94,27 @@ export default function TrophyRoom({
             <p className="mt-3 border-t border-line pt-2.5 text-[0.6875rem] text-ink-faint">
               Equipo {c.participant.team} · semana {c.currentWeek} de {c.competition.total_weeks}
               {' · desde '}{formatDate(c.competition.start_date)}
-              {c.favouriteSport && (
-                <> · más repetido {sportIcon(c.favouriteSport.name)} {c.favouriteSport.name}
-                  {' '}({c.favouriteSport.count})</>
-              )}
             </p>
+
+            {c.sports.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-line pt-2.5">
+                {c.sports.map(sp => (
+                  <span key={sp.name}
+                    className="inline-flex items-center gap-1 rounded-lg bg-ice-sunk px-2 py-1
+                               text-[0.6875rem] font-medium">
+                    <span aria-hidden>{sportIcon(sp.name)}</span>
+                    {sp.name}
+                    <span className="score font-bold text-ink-faint">{sp.count}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {c.medals.length > 0 ? (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {c.medals.map(m => (
-                <MedalChip key={`${m.competitionId}-${m.week}`} medal={m} />
+                <MedalChip key={`${m.competitionId}-${m.week}-${m.kind}`} medal={m} />
               ))}
             </div>
           ) : (
@@ -112,6 +132,37 @@ export default function TrophyRoom({
         </section>
       ))}
     </>
+  );
+}
+
+/** Lista de deportes con barra proporcional, ordenada de más a menos. */
+function SportList({ sports, total }: { sports: SportTally[]; total: number }) {
+  const max = Math.max(...sports.map(s => s.count), 1);
+
+  return (
+    <ul className="card divide-y divide-line">
+      {sports.map(sp => (
+        <li key={sp.name} className="flex items-center gap-3 px-3.5 py-2.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-ice-sunk text-lg"
+            aria-hidden>
+            {sportIcon(sp.name)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.8125rem] font-semibold">{sp.name}</p>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line">
+              <div className="h-full rounded-full bg-navy-600"
+                style={{ width: `${(sp.count / max) * 100}%` }} />
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="score font-display text-base font-bold leading-none">{sp.count}</p>
+            <p className="text-[0.5625rem] text-ink-faint">
+              {total ? Math.round((sp.count / total) * 100) : 0}%
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

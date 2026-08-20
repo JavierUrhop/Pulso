@@ -57,14 +57,18 @@ Cada semana en que alguien alcanza su meta gana una medalla, y hay dos niveles q
 
 | Nivel | Color | Ícono | Cuándo |
 |---|---|---|---|
-| Meta cumplida | Carmesí | Ticket ✓ | Llegó justo a su meta |
+| Meta cumplida | Carmesí | Ticket ✓ | Llegó a su meta |
 | Meta superada | Ciruela, con halo | Doble flecha ↑↑ | La superó en uno o más |
+
+**Superar la meta da las dos medallas**, porque para superarla primero hay que cumplirla. Una semana justa en la meta da una; una semana por encima da dos.
 
 Las mismas dos insignias aparecen en el marcador junto a cada persona, apagadas en gris punteado mientras no se consiguen. Se ven siempre, para que quede claro qué hay por ganar.
 
 ### Salón de trofeos
 
-El perfil de cada persona reúne lo conseguido en **todas** las competencias donde participa: entrenamientos totales, medallas por nivel, deporte más repetido y el detalle de cada medalla con su semana y fechas.
+El perfil de cada persona reúne lo conseguido en **todas** las competencias donde participa: entrenamientos totales, medallas por nivel, el detalle de cada medalla con su semana y fechas, y el histórico de deportes.
+
+Ese histórico muestra qué practica cada uno, ordenado de más a menos, con una barra proporcional y el porcentaje sobre el total. Aparece sumando todas las competencias arriba, y desglosado dentro de cada una.
 
 Es público dentro de la aplicación: desde la ficha de cualquier integrante hay un botón **Ver perfil**, así que todos pueden mirar los trofeos del resto. Vive en `/u/<id de usuario>`, fuera de la competencia, porque agrupa varias.
 
@@ -129,9 +133,10 @@ Las reglas viven en la base de datos (RLS), no solo en la interfaz:
 ```bash
 node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 32 casos de puntaje
 node scripts/test-week.mjs                                    # 11 casos de fechas
+node scripts/test-trophies.mjs                                # 7 casos de medallas
 ```
 
-El primero cubre bonos, topes, comodín, per cápita, escalado de metas, acumulado y la equivalencia entre el cálculo directo y el precalculado. El segundo cubre las semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano.
+El primero cubre bonos, topes, comodín, per cápita, escalado de metas, acumulado y la equivalencia entre el cálculo directo y el precalculado. El segundo cubre las semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano. El tercero cubre la regla de la medalla doble y el conteo de deportes.
 
 ## Rendimiento
 
