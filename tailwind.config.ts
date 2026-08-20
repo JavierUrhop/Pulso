@@ -12,7 +12,10 @@ export default {
         teamA: { DEFAULT: '#D92D2D', soft: '#FDECEC', ink: '#7F1616' },
         teamB: { DEFAULT: '#1668D6', soft: '#E8F1FD', ink: '#0B3E85' },
         win:  '#16A34A',
-        gold: '#D9A404',
+        gold: '#C68A00',
+        // Medallas: carmesí para la meta, ciruela para haberla superado.
+        crimson: { DEFAULT: '#C2185B', dark: '#8E0F42' },
+        plum:    { DEFAULT: '#7B3FA8', dark: '#552A75' },
       },
       fontFamily: {
         sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],

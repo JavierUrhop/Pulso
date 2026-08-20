@@ -4,6 +4,7 @@ import { loadCompetition } from '@/lib/data';
 import { scoreWeek, scoreSeason, currentStreak, round1 } from '@/lib/scoring';
 import { formatWeekRange } from '@/lib/week';
 import { Avatar, ProgressBar, Brand } from '@/components/ui';
+import { GoalBadges } from '@/components/Achievements';
 import type { Team, WeeklyScore } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,7 @@ interface Row {
   points: number;
   workouts: number;
   weeksMet: number;
+  weeksExceeded: number;
   wildcards: number;
   /** Solo en vista semanal. */
   week?: WeeklyScore;
@@ -52,6 +54,7 @@ export default async function Dashboard({
       points: s.total,
       workouts: s.workoutCount,
       weeksMet: s.metGoal ? 1 : 0,
+      weeksExceeded: s.exceededGoal ? 1 : 0,
       wildcards: s.usedWildcard ? 1 : 0,
       week: s,
     }));
@@ -63,7 +66,8 @@ export default async function Dashboard({
     };
 
     const acc = new Map<string, Row>(active.map(p => [p.id, {
-      participantId: p.id, points: 0, workouts: 0, weeksMet: 0, wildcards: 0,
+      participantId: p.id, points: 0, workouts: 0,
+      weeksMet: 0, weeksExceeded: 0, wildcards: 0,
     }]));
 
     for (const wk of season.weeks) {
@@ -76,6 +80,7 @@ export default async function Dashboard({
         row.points += s.total;
         row.workouts += s.workoutCount;
         if (s.metGoal) row.weeksMet += 1;
+        if (s.exceededGoal) row.weeksExceeded += 1;
       }
     }
 
@@ -244,20 +249,30 @@ export default async function Dashboard({
                                 Comodín · fuera del cálculo
                               </p>
                             ) : s ? (
-                              <div className="mt-1.5 flex items-center gap-2">
-                                <ProgressBar count={s.workoutCount} goal={s.goal}
-                                  maxWeekly={competition.max_weekly} team={team} size="sm" />
-                                <span className="score shrink-0 text-[0.625rem] font-bold text-ink-faint">
-                                  {s.workoutCount}/{s.goal}
-                                </span>
-                              </div>
+                              <>
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  <ProgressBar count={s.workoutCount} goal={s.goal}
+                                    maxWeekly={competition.max_weekly} team={team} size="sm" />
+                                  <span className="score shrink-0 text-[0.625rem] font-bold text-ink-faint">
+                                    {s.workoutCount}/{s.goal}
+                                  </span>
+                                </div>
+                                <div className="mt-1.5">
+                                  <GoalBadges met={s.metGoal} exceeded={s.exceededGoal} compact />
+                                </div>
+                              </>
                             ) : null
                           ) : (
-                            <p className="mt-1 text-[0.6875rem] text-ink-faint">
-                              <span className="font-bold text-ink-soft">{r.workouts}</span> entrenos ·
-                              {' '}<span className="font-bold text-ink-soft">{r.weeksMet}</span> semanas en meta
-                              {r.wildcards > 0 && ` · ${r.wildcards} comodín`}
-                            </p>
+                            <>
+                              <p className="mt-1 text-[0.6875rem] text-ink-faint">
+                                <span className="font-bold text-ink-soft">{r.workouts}</span>
+                                {' '}{r.workouts === 1 ? 'entreno' : 'entrenos'}
+                                {r.wildcards > 0 && ` · ${r.wildcards} comodín`}
+                              </p>
+                              <div className="mt-1.5">
+                                <GoalBadges met={r.weeksMet > 0} exceeded={r.weeksExceeded > 0} compact />
+                              </div>
+                            </>
                           )}
                         </div>
                         <span className={`score shrink-0 font-display text-lg font-bold ${

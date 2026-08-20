@@ -4,6 +4,7 @@ import { loadCompetition } from '@/lib/data';
 import { scoreWeek, currentStreak } from '@/lib/scoring';
 import { DAY_NAMES, formatWeekRange } from '@/lib/week';
 import { Avatar, ProgressBar, Stat } from '@/components/ui';
+import { GoalBadges } from '@/components/Achievements';
 import { photosOf, sportIcon } from '@/lib/sports';
 import WildcardButton from '@/components/WildcardButton';
 
@@ -58,10 +59,10 @@ export default async function ParticipantDetail({
                 Equipo {p.team} · meta {s.goal}/sem
               </p>
             </div>
-            {isMe && (
-              <Link href={`/c/${params.id}/yo`}
-                className="rounded-lg bg-white/15 px-3 py-1.5 text-[0.75rem] font-semibold hover:bg-white/25">
-                Editar
+            {p.user_id && (
+              <Link href={`/u/${p.user_id}`}
+                className="shrink-0 rounded-lg bg-white/15 px-3 py-1.5 text-[0.75rem] font-semibold hover:bg-white/25">
+                {isMe ? 'Mis trofeos' : 'Ver perfil'}
               </Link>
             )}
           </div>
@@ -102,6 +103,10 @@ export default async function ParticipantDetail({
           )}
         </div>
       </section>
+
+      <div className="mb-3">
+        <GoalBadges met={s.metGoal} exceeded={s.exceededGoal} sweep={s.sweepBonus > 0} />
+      </div>
 
       <div className="mb-4 grid grid-cols-4 gap-2">
         <Stat label="Entrenos" value={s.workoutCount} />

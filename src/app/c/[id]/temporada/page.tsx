@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import { scoreSeason } from '@/lib/scoring';
 import { Avatar, ProgressBar } from '@/components/ui';
+import { GoalBadges } from '@/components/Achievements';
 import type { Team } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -25,9 +26,25 @@ export default async function Temporada({
   const lastWeek = season.weeks[season.weeks.length - 1];
   const lastScores = new Map(lastWeek.scores.map(s => [s.participantId, s]));
 
+  // Medallas acumuladas de la temporada, por persona.
+  const tally = new Map<string, { met: number; exceeded: number }>();
+  for (const wk of season.weeks) {
+    for (const s of wk.scores) {
+      if (s.usedWildcard) continue;
+      const row = tally.get(s.participantId) ?? { met: 0, exceeded: 0 };
+      if (s.metGoal) row.met += 1;
+      if (s.exceededGoal) row.exceeded += 1;
+      tally.set(s.participantId, row);
+    }
+  }
+
   const ranking = participants
     .filter(p => p.is_active && (!filter || p.team === filter))
-    .map(p => ({ p, total: season.participantTotals.get(p.id) ?? 0 }))
+    .map(p => ({
+      p,
+      total: season.participantTotals.get(p.id) ?? 0,
+      medals: tally.get(p.id) ?? { met: 0, exceeded: 0 },
+    }))
     .sort((a, b) => b.total - a.total);
 
   const leader: Team | null = season.teamTotals.A === season.teamTotals.B ? null
@@ -106,7 +123,7 @@ export default async function Temporada({
       </div>
 
       <ul className="space-y-2">
-        {ranking.map(({ p, total }, i) => {
+        {ranking.map(({ p, total, medals }, i) => {
           const s = lastScores.get(p.id);
           return (
             <li key={p.id}>
@@ -125,10 +142,15 @@ export default async function Temporada({
                     </span>
                   </p>
                   {s && !s.usedWildcard && (
-                    <div className="mt-1.5">
-                      <ProgressBar count={s.workoutCount} goal={s.goal}
-                        maxWeekly={competition.max_weekly} team={p.team} size="sm" />
-                    </div>
+                    <>
+                      <div className="mt-1.5">
+                        <ProgressBar count={s.workoutCount} goal={s.goal}
+                          maxWeekly={competition.max_weekly} team={p.team} size="sm" />
+                      </div>
+                      <div className="mt-1.5">
+                        <GoalBadges met={s.metGoal} exceeded={s.exceededGoal} compact />
+                      </div>
+                    </>
                   )}
                 </div>
                 <span className="score shrink-0 font-display text-lg font-bold">{total}</span>

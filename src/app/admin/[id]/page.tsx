@@ -2,13 +2,13 @@ import { notFound } from 'next/navigation';
 import { isAdmin, updateCompetition, addParticipant, updateParticipant,
   releaseParticipant, deleteParticipant, setGoal, clearGoal,
   deleteWorkout, deleteWildcard, grantWildcard,
-  removeCover, deleteCompetition, renumberWeeks, shiftWeeks } from '../actions';
+  removeCover, deleteCompetition, renumberWeeks, shiftWeeks, setStartDate } from '../actions';
 import { createAdminClient } from '@/lib/supabase/server';
 import { weekNumberFor, DAY_NAMES, endDateOf, formatDate } from '@/lib/week';
 import { BackLink, Avatar } from '@/components/ui';
 import { photosOf } from '@/lib/sports';
 import CoverPicker from '@/components/CoverPicker';
-import { mondayOfDate } from '@/lib/week';
+import { mondayOfDate, weekRange } from '@/lib/week';
 import ErrorBanner from '@/components/ErrorBanner';
 import { redirect } from 'next/navigation';
 import type { Competition, Participant, Workout, Wildcard, ParticipantGoal } from '@/lib/types';
@@ -59,6 +59,8 @@ export default async function AdminCompetition({
         <p className="eyebrow mb-3">Reglas y metas base</p>
         <form action={updateCompetition} className="space-y-3">
           <input type="hidden" name="id" value={c.id} />
+          {/* La fecha de inicio se maneja en la sección Calendario. */}
+          <input type="hidden" name="start_date" value={c.start_date} />
           <div>
             <label className="label" htmlFor="name">Nombre</label>
             <input id="name" name="name" className="field" defaultValue={c.name} />
@@ -66,7 +68,6 @@ export default async function AdminCompetition({
 
           <CoverPicker current={c.cover_url} />
           <div className="grid grid-cols-2 gap-2.5">
-            <Num label="Fecha de inicio" name="start_date" type="date" value={c.start_date} />
             <Num label="Duración (semanas)" name="total_weeks" value={c.total_weeks} />
             <Num label="Meta inicial" name="goal_initial" value={c.goal_initial} />
             <Num label="Meta avanzada" name="goal_advanced" value={c.goal_advanced} />
@@ -94,13 +95,52 @@ export default async function AdminCompetition({
         )}
       </section>
 
-      {/* Corrección de semanas */}
+      {/* Calendario de la competencia */}
       <section className="card mb-6 p-4">
-        <p className="eyebrow mb-1">Corregir numeración de semanas</p>
-        <p className="mb-3 text-[0.8125rem] text-ink-soft">
-          La semana 1 parte el lunes {formatDate(mondayOfDate(c.start_date))}. Si los registros
-          quedaron con la numeración de una fecha de inicio anterior, corrígelos aquí.
+        <p className="eyebrow mb-3">Calendario</p>
+
+        <dl className="mb-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-ice-sunk p-3">
+            <dt className="text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+              Semana 1
+            </dt>
+            <dd className="mt-0.5 text-[0.8125rem] font-semibold">
+              {formatDate(weekRange(c.start_date, 1).from.toISOString().slice(0, 10))}
+              {' → '}
+              {formatDate(weekRange(c.start_date, 1).to.toISOString().slice(0, 10))}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-ice-sunk p-3">
+            <dt className="text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+              Semana en curso
+            </dt>
+            <dd className="mt-0.5 text-[0.8125rem] font-semibold">
+              {currentWeek} de {c.total_weeks}
+            </dd>
+          </div>
+        </dl>
+
+        <form action={setStartDate} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="id" value={c.id} />
+          <div className="min-w-[150px] flex-1">
+            <label className="label" htmlFor="start_date_only">Fecha de inicio</label>
+            <input id="start_date_only" name="start_date" type="date" className="field"
+              defaultValue={c.start_date} required />
+          </div>
+          <button className="btn btn-primary">Guardar inicio</button>
+        </form>
+        <p className="mt-1.5 text-[0.6875rem] text-ink-faint">
+          Cambiar esta fecha corre el calendario completo. Si eliges un día a mitad de semana,
+          la semana 1 igual parte el lunes de esa semana.
         </p>
+
+        <div className="mt-4 border-t border-line pt-4">
+          <p className="eyebrow mb-1">Corregir numeración de registros</p>
+          <p className="mb-3 text-[0.8125rem] text-ink-soft">
+            Cambiar la fecha de inicio no mueve los registros ya guardados: cada uno conserva
+            el número de semana con que se creó. Después de ajustar la fecha, usa una de estas
+            dos opciones.
+          </p>
 
         <div className="space-y-2.5">
           <form action={renumberWeeks}>
@@ -124,6 +164,7 @@ export default async function AdminCompetition({
             Con −1, lo que figura como semana 2 pasa a semana 1. Afecta entrenamientos,
             comodines y metas manuales.
           </p>
+        </div>
         </div>
       </section>
 

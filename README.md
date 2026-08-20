@@ -51,6 +51,23 @@ Sin comprimir, un caso extremo (15 personas × 6 entrenamientos × 3 fotos × 8 
 
 Los parámetros están en `src/lib/image.ts` (`MAX_SIDE` y `QUALITY`) si quieres apretar más o menos.
 
+### Logros
+
+Cada semana en que alguien alcanza su meta gana una medalla, y hay dos niveles que se distinguen por color, ícono y forma:
+
+| Nivel | Color | Ícono | Cuándo |
+|---|---|---|---|
+| Meta cumplida | Carmesí | Ticket ✓ | Llegó justo a su meta |
+| Meta superada | Ciruela, con halo | Doble flecha ↑↑ | La superó en uno o más |
+
+Las mismas dos insignias aparecen en el marcador junto a cada persona, apagadas en gris punteado mientras no se consiguen. Se ven siempre, para que quede claro qué hay por ganar.
+
+### Salón de trofeos
+
+El perfil de cada persona reúne lo conseguido en **todas** las competencias donde participa: entrenamientos totales, medallas por nivel, deporte más repetido y el detalle de cada medalla con su semana y fechas.
+
+Es público dentro de la aplicación: desde la ficha de cualquier integrante hay un botón **Ver perfil**, así que todos pueden mirar los trofeos del resto. Vive en `/u/<id de usuario>`, fuera de la competencia, porque agrupa varias.
+
 ### Escalado de metas
 
 Si alguien iguala **exactamente** su meta durante 3 semanas seguidas, la meta sube en 1 a la semana siguiente. Superarla no cuenta para la racha, solo igualarla. El administrador también puede fijar metas a mano.
@@ -70,14 +87,18 @@ src/
     types.ts
     supabase/       ← clientes de navegador, servidor y admin
   app/
-    login/          ← registro e inicio de sesión
+    login/          ← registro, alta y recuperación de contraseña
+    recuperar/      ← definir contraseña nueva desde el enlace del correo
+    u/[uid]/        ← salón de trofeos público de cualquier integrante
     page.tsx        ← competencias activas
     c/[id]/
       page.tsx        ← marcador: consolidado por defecto, filtro por semana
       asignarme/      ← reclamar tu cupo (se bloquea al elegirlo)
-      yo/             ← editar nombre, apodo y avatar
+      yo/             ← salón de trofeos propio + ajustes
+      yo/editar/      ← nombre, apodo y avatar
       registrar/      ← formulario de entrenamiento
       p/[pid]/        ← detalle de una persona con bitácora y fotos
+      w/[wid]/        ← editar o eliminar un entrenamiento propio
       temporada/      ← acumulado, gráfico y ranking
       deportes/       ← marcador global: qué deporte hace cada equipo
     admin/
@@ -85,6 +106,9 @@ src/
       [id]/           ← integrantes, reglas, metas manuales, registros
       deportes/       ← catálogo del desplegable
   components/
+    Achievements.tsx  ← insignias y medallas
+    TrophyRoom.tsx    ← perfil de logros, propio o de otro
+    TabBar.tsx        ← navegación inferior con respuesta inmediata
 supabase/
   schema.sql        ← instalación desde cero
   migrations/       ← cambios sobre una base que ya está en producción
@@ -103,11 +127,17 @@ Las reglas viven en la base de datos (RLS), no solo en la interfaz:
 ## Probar las reglas
 
 ```bash
-node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 24 casos de puntaje
+node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 32 casos de puntaje
 node scripts/test-week.mjs                                    # 11 casos de fechas
 ```
 
-El primero cubre bonos, topes, comodín, per cápita, escalado de metas y acumulado. El segundo cubre el cálculo de semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano.
+El primero cubre bonos, topes, comodín, per cápita, escalado de metas, acumulado y la equivalencia entre el cálculo directo y el precalculado. El segundo cubre las semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano.
+
+## Rendimiento
+
+Las metas dependen del historial: para saber la meta de la semana 8 hay que recorrer las siete anteriores. Hecho de forma ingenua, armar el marcador cuesta al cuadrado en el número de semanas, y con veinte personas eso se nota al navegar.
+
+`createScoringContext()` calcula una sola vez la tabla de metas y el conteo de entrenamientos por persona y semana; el resto de las pantallas la reutiliza. Además cada ruta tiene su `loading.tsx`, y la barra inferior marca la pestaña tocada de inmediato con una barra de progreso, en vez de quedarse quieta esperando al servidor.
 
 ## Panel de administración
 
@@ -121,12 +151,38 @@ Además de crear competencias y armar los equipos, permite:
 
 ### Si las semanas quedaron corridas
 
-Pasa cuando la competencia se creó con una fecha de inicio de la semana anterior: los registros guardan el número de semana calculado en ese momento. Para arreglarlo:
+Hay **dos cosas distintas** que pueden estar desalineadas, y conviene arreglarlas en este orden:
 
-1. En el panel de la competencia, corrige la **fecha de inicio** al lunes correcto y guarda
-2. Usa **Recalcular según la fecha de cada registro**, o bien **Desplazar** con −1 si prefieres mover todo en bloque
+1. **La fecha de inicio de la competencia**, que define qué rango cubre cada semana. Se ajusta en la sección **Calendario** del panel, con su propio botón. Ahí mismo se ve el rango de la semana 1 y cuál es la semana en curso.
+2. **El número de semana de cada registro**, que quedó grabado al momento de guardarlo y no se mueve solo al cambiar la fecha. Se corrige abajo, en **Corregir numeración de registros**.
 
-El formulario de creación ahora propone por defecto el lunes de la semana en curso y muestra explícitamente qué rango cubre la semana 1, para que no vuelva a ocurrir.
+Si el encabezado de la app muestra un rango de fechas equivocado (por ejemplo "Semana 1 · 10 ago – 16 ago" cuando querías partir el 17), el problema es el punto 1, no el 2.
+
+Después de corregir la fecha, **Recalcular según la fecha de cada registro** es la opción más segura: recalcula cada uno a partir de cuándo se guardó. **Desplazar** conviene solo si sabes que todos los registros están corridos la misma cantidad, y no debe usarse dos veces seguidas.
+
+## Salón de trofeos
+
+El perfil de cada persona reúne lo conseguido en **todas** las competencias donde participa, no solo en la actual. Muestra entrenamientos totales, medallas y, por competencia, un desglose con equipo, semanas, comodines y deporte más repetido.
+
+Hay dos medallas, una por semana:
+
+| Medalla | Cuándo se gana | Color |
+|---|---|---|
+| ★ Meta cumplida | La semana termina con los entrenamientos justos de la meta | Carmesí |
+| ✦ Meta superada | Se supera la meta en uno o más entrenamientos | Ciruela |
+
+Cada medalla guarda la semana y su rango de fechas. Una semana con comodín no genera medalla.
+
+En el marcador y en la ficha de cada persona aparecen además unas **insignias tipo semáforo**: se ven siempre, apagadas y con borde punteado, y se encienden al conseguirse. La idea es que se vea qué hay por ganar antes de ganarlo.
+
+Se llega al perfil desde la pestaña Perfil (el propio) o con el botón **Ver perfil** en la ficha de cualquier integrante. La ruta es `/u/<id de usuario>`.
+
+## Rendimiento
+
+Dos cosas hacían que la app se sintiera trabada al cambiar de pestaña:
+
+1. **El cálculo crecía al cuadrado.** Deducir la meta de una semana implicaba recorrer todas las anteriores, y eso se repetía por persona y por semana. Ahora `createScoringContext` arma en una sola pasada la tabla de metas y el conteo de entrenamientos, y las pantallas la reutilizan.
+2. **No había respuesta visual inmediata.** Cada pestaña espera al servidor, así que se agregaron esqueletos de carga (`loading.tsx`) y la barra inferior marca al instante la pestaña tocada, con una línea de progreso mientras llega la pantalla.
 
 ## Ajustes de la aplicación
 

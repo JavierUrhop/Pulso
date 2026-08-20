@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { weekNumberFor, mondayOfChile } from '@/lib/week';
+import { weekNumberFor, mondayOfDate, formatDate } from '@/lib/week';
 
 const COOKIE = 'admin_ok';
 
@@ -306,6 +306,33 @@ export async function deleteCompetition(formData: FormData) {
   revalidatePath('/admin');
   revalidatePath('/');
   redirect('/admin');
+}
+
+/**
+ * Cambia solo la fecha de inicio. Es una acción aparte del formulario de
+ * reglas porque es el ajuste que más se necesita y conviene que sea
+ * evidente que se guardó.
+ */
+export async function setStartDate(formData: FormData) {
+  const supabase = await requireAdmin();
+  const id = String(formData.get('id'));
+  const date = String(formData.get('start_date') ?? '');
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    fail(`/admin/${id}`, 'Escribe una fecha válida.');
+  }
+
+  const { error } = await supabase.from('competitions')
+    .update({ start_date: date }).eq('id', id);
+
+  if (error) fail(`/admin/${id}`, error.message);
+
+  revalidatePath(`/admin/${id}`);
+  revalidatePath(`/c/${id}`);
+  revalidatePath('/');
+
+  redirect(`/admin/${id}?ok=${encodeURIComponent(
+    `Inicio guardado. La semana 1 arranca el lunes ${formatDate(mondayOfDate(date))}.`)}`);
 }
 
 // ------------------------------------------------------- corrección de semanas

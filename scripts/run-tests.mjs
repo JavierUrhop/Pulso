@@ -1,4 +1,5 @@
-import { scoreWeek, goalFor, progressSegments, scoreSeason } from '../.tmp/out/scoring.mjs';
+import { scoreWeek, goalFor, progressSegments, scoreSeason,
+  createScoringContext, currentStreak } from '../.tmp/out/scoring.mjs';
 
 const comp = {
   id: 'c1', name: 'Test', start_date: '2026-07-13', end_date: null,
@@ -132,6 +133,39 @@ const eq = (label, got, want) => {
   const season = scoreSeason(comp, ps, ws, [], [], 2);
   eq('acumulado a1 = (3+2+5) + (3+2+5) = 20', season.participantTotals.get('a1'), 20);
   eq('temporada tiene 2 semanas', season.weeks.length, 2);
+}
+
+// ---- 14. El contexto precalculado da lo mismo que el cálculo directo
+{
+  const ps = [P('a1','A','avanzada'), P('a2','A','inicial'), P('b1','B','avanzada')];
+  const ws = [...W('a1',1,3), ...W('a1',2,4), ...W('a2',1,2), ...W('a2',2,2), ...W('b1',1,5)];
+  const ctx = createScoringContext(comp, ps, ws, [], 3);
+
+  for (let wk = 1; wk <= 3; wk++) {
+    const directo = scoreWeek(comp, ps, ws, [], [], wk);
+    const conCtx  = scoreWeek(comp, ps, ws, [], [], wk, ctx);
+    eq(`semana ${wk}: contexto y cálculo directo coinciden`,
+      JSON.stringify(conCtx.scores), JSON.stringify(directo.scores));
+  }
+  eq('la tabla de metas cubre todas las semanas', ctx.goals.get('a1').length, 4);
+}
+
+// ---- 15. La racha se lee igual con y sin contexto
+{
+  const p = P('a1','A','avanzada');
+  const ws = [...W('a1',1,3), ...W('a1',2,3)];
+  const ctx = createScoringContext(comp, [p], ws, [], 3);
+  eq('racha con contexto', currentStreak(comp, p, 3, ws, [], ctx), 2);
+  eq('racha sin contexto', currentStreak(comp, p, 3, ws, []), 2);
+}
+
+// ---- 16. Un ajuste manual reinicia la racha en la semana indicada
+{
+  const p = P('a1','A','inicial');
+  const ws = [...W('a1',1,2), ...W('a1',2,2), ...W('a1',3,2), ...W('a1',4,2)];
+  const goals = [{ id:'g1', competition_id:'c1', participant_id:'a1', week_number:2, goal:4, source:'manual' }];
+  eq('meta manual vale desde su semana', goalFor(comp, p, 2, ws, goals), 4);
+  eq('y se mantiene después', goalFor(comp, p, 5, ws, goals), 4);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);
