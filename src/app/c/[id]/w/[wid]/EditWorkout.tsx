@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, DAY_SHORT } from '@/lib/week';
+import { DAY_NAMES } from '@/lib/week';
+import type { RegistrationSlot } from '@/lib/week';
 import { sportIcon, titleCase, photosOf, MAX_PHOTOS } from '@/lib/sports';
 import { compressImage } from '@/lib/image';
 import type { Team, Sport, Workout } from '@/lib/types';
@@ -13,15 +14,21 @@ const OTRO = '__otro__';
 interface NewShot { file: File; url: string }
 
 export default function EditWorkout({
-  competitionId, workout, sports, team, participantId,
+  competitionId, workout, sports, team, participantId, slots,
 }: {
   competitionId: string; workout: Workout; sports: Sport[];
   team: Team; participantId: string;
+  /** Hoy y ayer. Solo dentro de esa ventana se puede mover la fecha. */
+  slots: RegistrationSlot[];
 }) {
   const router = useRouter();
   const known = sports.some(s => s.name === workout.sport);
 
-  const [day, setDay] = useState(workout.day_of_week);
+  // Índice del slot que coincide con el registro; -1 si ya quedó fuera de plazo.
+  const originalSlot = slots.findIndex(
+    sl => sl.weekNumber === workout.week_number && sl.dayOfWeek === workout.day_of_week);
+  const [slotIndex, setSlotIndex] = useState(originalSlot);
+  const canMoveDate = originalSlot !== -1;
   const [sport, setSport] = useState(known ? workout.sport : OTRO);
   const [customSport, setCustomSport] = useState(known ? '' : workout.sport);
   const [note, setNote] = useState(workout.note ?? '');
@@ -81,8 +88,11 @@ export default function EditWorkout({
       urls.push(supabase.storage.from('workout-photos').getPublicUrl(path).data.publicUrl);
     }
 
+    const moved = canMoveDate && slotIndex !== -1 ? slots[slotIndex] : null;
+
     const { error } = await supabase.from('workouts').update({
-      day_of_week: day, sport: finalSport,
+      ...(moved ? { week_number: moved.weekNumber, day_of_week: moved.dayOfWeek } : {}),
+      sport: finalSport,
       note: note.trim() || null, photo_urls: urls,
     }).eq('id', workout.id);
 
@@ -107,23 +117,46 @@ export default function EditWorkout({
   return (
     <div className="space-y-5">
       <div>
-        <p className="label">Día</p>
-        <div className="grid grid-cols-7 gap-1.5">
-          {DAY_SHORT.map((d, i) => {
-            const val = i + 1;
-            const on = day === val;
-            return (
-              <button key={i} onClick={() => setDay(val)}
-                aria-label={DAY_NAMES[i]} aria-pressed={on}
-                className={`h-12 rounded-xl border font-display text-base font-bold transition ${
-                  on ? `${accent} border-transparent text-white shadow-lift`
-                     : 'border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
-                {d}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-1.5 text-[0.6875rem] text-ink-faint">{DAY_NAMES[day - 1]}</p>
+        <p className="label">Día del entrenamiento</p>
+
+        {canMoveDate ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              {slots.map((sl, i) => {
+                const on = slotIndex === i;
+                return (
+                  <button key={sl.date} onClick={() => setSlotIndex(i)} aria-pressed={on}
+                    className={`rounded-xl border px-3 py-3 text-left transition ${
+                      on ? `${accent} border-transparent text-white shadow-lift`
+                         : 'border-line bg-ice-card hover:bg-ice-sunk'}`}>
+                    <p className="display text-base leading-none">{sl.label}</p>
+                    <p className={`mt-1 text-[0.75rem] font-medium ${
+                      on ? 'text-white/80' : 'text-ink-soft'}`}>{sl.dayName}</p>
+                    {sl.previousWeek && (
+                      <p className={`mt-1 text-[0.625rem] font-bold uppercase tracking-[0.06em] ${
+                        on ? 'text-white/70' : 'text-ink-faint'}`}>
+                        Semana {sl.weekNumber}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-[0.6875rem] text-ink-faint">
+              La fecha solo se puede mover dentro de las últimas 24 horas.
+            </p>
+          </>
+        ) : (
+          <div className="rounded-xl border border-line bg-ice-sunk px-3.5 py-3">
+            <p className="text-[0.8125rem] font-semibold">
+              {DAY_NAMES[workout.day_of_week - 1]} · semana {workout.week_number}
+            </p>
+            <p className="mt-1 text-[0.6875rem] text-ink-faint">
+              Pasó el plazo para cambiar la fecha. Puedes seguir corrigiendo el deporte,
+              la nota y las fotos, o eliminar el registro.
+            </p>
+          </div>
+        )}
       </div>
 
       <div>

@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
 import { BackLink } from '@/components/ui';
+import { registrationSlots } from '@/lib/week';
 import EditWorkout from './EditWorkout';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,8 @@ export default async function EditarEntrenamiento({
         sports={data.sports}
         team={data.me.team}
         participantId={data.me.id}
+        slots={registrationSlots(
+          data.competition.start_date, data.competition.total_weeks)}
       />
     </>
   );

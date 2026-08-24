@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, DAY_SHORT, currentDayOfWeek } from '@/lib/week';
+import type { RegistrationSlot } from '@/lib/week';
 import { sportIcon, MAX_PHOTOS, titleCase } from '@/lib/sports';
 import { compressImage, formatBytes } from '@/lib/image';
 import type { Team, Sport } from '@/lib/types';
@@ -13,15 +13,19 @@ interface Shot { file: File; url: string; saved: number }
 const OTRO = '__otro__';
 
 export default function WorkoutForm({
-  competitionId, participantId, weekNumber, sports,
-  alreadyThisWeek, maxWeekly, goal, usedWildcard, team,
+  competitionId, participantId, slots, sports,
+  alreadyThisWeek, maxWeekly, goal, usedWildcard, team, weekCounts,
 }: {
-  competitionId: string; participantId: string; weekNumber: number;
+  competitionId: string; participantId: string;
+  /** Hoy y ayer, cada uno con su semana ya resuelta. */
+  slots: RegistrationSlot[];
   sports: Sport[]; alreadyThisWeek: number; maxWeekly: number;
   goal: number; usedWildcard: boolean; team: Team;
+  /** Entrenamientos ya registrados por semana, para avisar del tope. */
+  weekCounts: Record<number, number>;
 }) {
   const router = useRouter();
-  const [day, setDay] = useState(currentDayOfWeek());
+  const [slotIndex, setSlotIndex] = useState(0);
   const [sport, setSport] = useState(sports[0]?.name ?? '');
   const [note, setNote] = useState('');
   const [shots, setShots] = useState<Shot[]>([]);
@@ -30,8 +34,10 @@ export default function WorkoutForm({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const atCap = alreadyThisWeek >= maxWeekly;
-  const next = alreadyThisWeek + 1;
+  const slot = slots[slotIndex];
+  const usedThatWeek = slot ? (weekCounts[slot.weekNumber] ?? 0) : alreadyThisWeek;
+  const atCap = usedThatWeek >= maxWeekly;
+  const next = usedThatWeek + 1;
   const accent = team === 'A' ? 'bg-teamA' : 'bg-teamB';
   const isOther = sport === OTRO;
   const reference = sports.find(s => s.name === sport)?.reference;
@@ -111,7 +117,7 @@ export default function WorkoutForm({
 
     const { error } = await supabase.from('workouts').insert({
       competition_id: competitionId, participant_id: participantId,
-      week_number: weekNumber, day_of_week: day, sport: finalSport,
+      week_number: slot.weekNumber, day_of_week: slot.dayOfWeek, sport: finalSport,
       note: note.trim() || null, photo_urls: urls,
     });
 
@@ -132,13 +138,31 @@ export default function WorkoutForm({
     );
   }
 
+  if (slots.length === 0) {
+    return (
+      <div className="card p-6 text-center">
+        <p className="display text-lg">Fuera de fechas</p>
+        <p className="mx-auto mt-1.5 max-w-xs text-sm text-ink-soft">
+          Hoy no cae dentro del calendario de la competencia.
+        </p>
+      </div>
+    );
+  }
+
   if (atCap) {
     return (
       <div className="card p-6 text-center">
         <p className="display text-lg">Tope alcanzado</p>
         <p className="mx-auto mt-1.5 max-w-xs text-sm text-ink-soft">
-          Ya registraste {maxWeekly} entrenamientos, el máximo que puntúa por semana.
+          Ya registraste {maxWeekly} entrenamientos en la semana {slot.weekNumber},
+          el máximo que puntúa.
         </p>
+        {slots.length > 1 && (
+          <button className="btn mt-4"
+            onClick={() => setSlotIndex(slotIndex === 0 ? 1 : 0)}>
+            Probar con {slots[slotIndex === 0 ? 1 : 0].label.toLowerCase()}
+          </button>
+        )}
       </div>
     );
   }
@@ -146,23 +170,42 @@ export default function WorkoutForm({
   return (
     <div className="space-y-5">
       <div>
-        <p className="label">Día</p>
-        <div className="grid grid-cols-7 gap-1.5">
-          {DAY_SHORT.map((d, i) => {
-            const val = i + 1;
-            const on = day === val;
+        <p className="label">¿Cuándo entrenaste?</p>
+        <div className="grid grid-cols-2 gap-2">
+          {slots.map((sl, i) => {
+            const on = slotIndex === i;
             return (
-              <button key={i} onClick={() => setDay(val)}
-                aria-label={DAY_NAMES[i]} aria-pressed={on}
-                className={`h-12 rounded-xl border font-display text-base font-bold transition ${
+              <button key={sl.date} onClick={() => { setSlotIndex(i); setError(null); }}
+                aria-pressed={on}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
                   on ? `${accent} border-transparent text-white shadow-lift`
-                     : 'border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
-                {d}
+                     : 'border-line bg-ice-card hover:bg-ice-sunk'}`}>
+                <p className={`display text-base leading-none ${on ? '' : 'text-ink'}`}>
+                  {sl.label}
+                </p>
+                <p className={`mt-1 text-[0.75rem] font-medium ${
+                  on ? 'text-white/80' : 'text-ink-soft'}`}>
+                  {sl.dayName}
+                </p>
+                {sl.previousWeek && (
+                  <p className={`mt-1 text-[0.625rem] font-bold uppercase tracking-[0.06em] ${
+                    on ? 'text-white/70' : 'text-ink-faint'}`}>
+                    Semana {sl.weekNumber}
+                  </p>
+                )}
               </button>
             );
           })}
         </div>
-        <p className="mt-1.5 text-[0.6875rem] text-ink-faint">{DAY_NAMES[day - 1]}</p>
+
+        {slot?.previousWeek && (
+          <p className="mt-2 rounded-xl border border-line bg-ice-sunk px-3.5 py-2.5
+                        text-[0.75rem] text-ink-soft">
+            Este entrenamiento se guardará en la <span className="font-semibold text-ink">
+            semana {slot.weekNumber}</span>, que es a la que pertenece ese día. Cuenta para
+            los puntos de esa semana.
+          </p>
+        )}
       </div>
 
       <div>
@@ -250,7 +293,8 @@ export default function WorkoutForm({
 
       <div className="rounded-xl border border-line bg-ice-card px-3.5 py-3">
         <p className="text-[0.8125rem] text-ink-soft">
-          Entrenamiento <span className="score font-bold text-ink">{next}</span> de la semana ·
+          Entrenamiento <span className="score font-bold text-ink">{next}</span>
+          {' '}de la semana {slot.weekNumber} ·
           {' '}meta <span className="score font-bold text-ink">{goal}</span>
           {next === goal && <span className="font-semibold text-win"> · con este llegas a la meta</span>}
           {next === goal + 1 && <span className="font-semibold text-win"> · con este la superas</span>}

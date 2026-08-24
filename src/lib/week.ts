@@ -112,3 +112,69 @@ export function mondayOfChile(when: Date = new Date()): string {
 export function mondayOfDate(date: string): string {
   return mondayOf(dayOf(date)).toISOString().slice(0, 10);
 }
+
+/** Una opción válida para registrar: hoy o ayer, con su semana ya resuelta. */
+export interface RegistrationSlot {
+  label: 'Hoy' | 'Ayer';
+  /** 1..7 con lunes = 1 */
+  dayOfWeek: number;
+  dayName: string;
+  weekNumber: number;
+  /** 'YYYY-MM-DD' en calendario chileno */
+  date: string;
+  /** true si cae en una semana distinta a la que corre hoy */
+  previousWeek: boolean;
+}
+
+/**
+ * Ventana de registro: solo se puede anotar el entrenamiento de hoy o el de
+ * ayer.
+ *
+ * El caso importante es el lunes: "ayer" fue domingo, que pertenece a la
+ * semana anterior y ya está cerrada. En vez de bloquearlo, la opción viene
+ * con su propio número de semana, así el registro cae donde corresponde.
+ */
+export function registrationSlots(
+  startDate: string,
+  totalWeeks: number,
+  when: Date = new Date(),
+): RegistrationSlot[] {
+  const today = dayOf(santiagoDateString(when));
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+  const currentWeek = weekNumberFor(startDate, when);
+  const startMonday = mondayOf(dayOf(startDate));
+
+  const build = (d: Date, label: 'Hoy' | 'Ayer'): RegistrationSlot | null => {
+    const iso = d.toISOString().slice(0, 10);
+    const diffDays = Math.round((mondayOf(d).getTime() - startMonday.getTime()) / 86_400_000);
+    const week = Math.floor(diffDays / 7) + 1;
+
+    // Fuera del calendario de la competencia: no se puede registrar.
+    if (week < 1 || week > totalWeeks) return null;
+
+    const dow = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
+    return {
+      label,
+      dayOfWeek: dow,
+      dayName: DAY_NAMES[dow - 1],
+      weekNumber: week,
+      date: iso,
+      previousWeek: week !== currentWeek,
+    };
+  };
+
+  return [build(today, 'Hoy'), build(yesterday, 'Ayer')]
+    .filter((s): s is RegistrationSlot => s !== null);
+}
+
+/** ¿Ese día y semana siguen dentro de la ventana de registro? */
+export function isWithinWindow(
+  startDate: string, totalWeeks: number,
+  weekNumber: number, dayOfWeek: number,
+  when: Date = new Date(),
+): boolean {
+  return registrationSlots(startDate, totalWeeks, when)
+    .some(s => s.weekNumber === weekNumber && s.dayOfWeek === dayOfWeek);
+}

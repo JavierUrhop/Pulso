@@ -35,7 +35,13 @@ El administrador puede otorgar comodines adicionales desde el panel, indicando l
 
 ### Registro de entrenamientos
 
-Cada persona registra solo los suyos, eligiendo día, deporte y **entre 1 y 3 fotos** de respaldo, que pueden venir de la cámara o de la galería. La foto es obligatoria: sin ella el registro no se guarda.
+Cada persona registra solo los suyos, eligiendo cuándo entrenó, el deporte y **entre 1 y 3 fotos** de respaldo, que pueden venir de la cámara o de la galería. La foto es obligatoria: sin ella el registro no se guarda.
+
+**Ventana de 24 horas.** Solo se puede anotar el entrenamiento de **hoy o el de ayer**. El formulario ofrece esas dos opciones y nada más, así que no hay que elegir el día de una lista de siete.
+
+El caso interesante es el lunes: "ayer" fue domingo, que pertenece a la semana anterior y ya está cerrada. La opción viene con su semana ya resuelta y avisa en pantalla que el registro contará para esa semana, no para la nueva. Lo mismo aplica al editar: la fecha solo se puede mover dentro de esas 24 horas, aunque el deporte, la nota y las fotos se pueden corregir después sin plazo.
+
+La regla se valida también en la base de datos (`workout_is_recent`), porque de otro modo bastaría con enviar otros valores desde el navegador para saltarla.
 
 Cada deporte del catálogo trae una duración de referencia (por ejemplo, 40 min para fútbol). Es informativa y se muestra al elegirlo, pero no se guarda en el registro ni afecta el puntaje.
 
@@ -134,9 +140,10 @@ Las reglas viven en la base de datos (RLS), no solo en la interfaz:
 node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 32 casos de puntaje
 node scripts/test-week.mjs                                    # 11 casos de fechas
 node scripts/test-trophies.mjs                                # 7 casos de medallas
+node scripts/test-window.mjs                                  # 14 casos de la ventana de 24 h
 ```
 
-El primero cubre bonos, topes, comodín, per cápita, escalado de metas, acumulado y la equivalencia entre el cálculo directo y el precalculado. El segundo cubre las semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano. El tercero cubre la regla de la medalla doble y el conteo de deportes.
+El primero cubre bonos, topes, comodín, per cápita, escalado de metas, acumulado y la equivalencia entre el cálculo directo y el precalculado. El segundo cubre las semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano. El tercero cubre la regla de la medalla doble y el conteo de deportes. El cuarto cubre la ventana de registro, con el lunes que arrastra el domingo anterior, el primer día de competencia y el horario de verano.
 
 ## Rendimiento
 
