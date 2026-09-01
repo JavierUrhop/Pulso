@@ -94,6 +94,8 @@ export default function TrophyRoom({
             <p className="mt-3 border-t border-line pt-2.5 text-[0.6875rem] text-ink-faint">
               Equipo {c.participant.team} · semana {c.currentWeek} de {c.competition.total_weeks}
               {' · desde '}{formatDate(c.competition.start_date)}
+              {c.inactiveWeeks > 0 && ` · ${c.inactiveWeeks} ${
+                c.inactiveWeeks === 1 ? 'semana sin actividad' : 'semanas sin actividad'}`}
             </p>
 
             {c.sports.length > 0 && (

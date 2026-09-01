@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
-import { createScoringContext, baseGoalFor } from '@/lib/scoring';
+import { createScoringContext, baseGoalFor, buildExclusions } from '@/lib/scoring';
 import { activeWeek } from '@/lib/week';
 import type { Medal } from '@/components/Achievements';
 import type {
-  Competition, Participant, Workout, Wildcard, ParticipantGoal,
+  Competition, Participant, Workout, Wildcard, ParticipantGoal, InactiveWeek,
 } from '@/lib/types';
 
 export interface SportTally {
@@ -21,6 +21,8 @@ export interface CompetitionTrophies {
   weeksMet: number;
   weeksExceeded: number;
   wildcards: number;
+  /** Semanas que el administrador dejó fuera del cálculo. */
+  inactiveWeeks: number;
   medals: Medal[];
   /** Todo lo que ha practicado en esta competencia, de más a menos. */
   sports: SportTally[];
@@ -58,17 +60,23 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
   const participantIds = participants.map(p => p.id);
   const competitionIds = [...new Set(participants.map(p => p.competition_id))];
 
-  const [comps, works, cards, goals] = await Promise.all([
+  const [comps, works, cards, goals, inactive] = await Promise.all([
     supabase.from('competitions').select('*').in('id', competitionIds),
     supabase.from('workouts').select('*').in('participant_id', participantIds),
     supabase.from('wildcards').select('*').in('participant_id', participantIds),
     supabase.from('participant_goals').select('*').in('participant_id', participantIds),
+    supabase.from('inactive_weeks').select('*').in('participant_id', participantIds),
   ]);
 
   const competitions = (comps.data ?? []) as Competition[];
   const workouts = (works.data ?? []) as Workout[];
   const wildcards = (cards.data ?? []) as Wildcard[];
   const overrides = (goals.data ?? []) as ParticipantGoal[];
+  const inactiveWeeks = (inactive.data ?? []) as InactiveWeek[];
+
+  // Comodines y semanas desactivadas por el administrador se saltan igual:
+  // sin ellas no habría medalla, así que tampoco corresponde darla.
+  const excluded = buildExclusions(wildcards, inactiveWeeks);
 
   const rows: CompetitionTrophies[] = [];
 
@@ -81,7 +89,7 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
     const currentWeek = activeWeek(competition.start_date, competition.total_weeks);
 
     const ctx = createScoringContext(
-      competition, [participant], mine, overrides, currentWeek);
+      competition, [participant], mine, overrides, currentWeek, excluded);
     const series = ctx.goals.get(participant.id) ?? [];
 
     const medals: Medal[] = [];
@@ -89,7 +97,7 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
     let weeksExceeded = 0;
 
     for (let wk = 1; wk <= currentWeek; wk++) {
-      if (myCards.some(c => c.week_number === wk)) continue;
+      if (excluded.has(`${participant.id}:${wk}`)) continue;
 
       const count = Math.min(
         ctx.counts.get(`${participant.id}:${wk}`) ?? 0,
@@ -136,6 +144,8 @@ export async function loadTrophyRoom(userId: string): Promise<TrophyRoom | null>
       weeksMet,
       weeksExceeded,
       wildcards: myCards.length,
+      inactiveWeeks: inactiveWeeks.filter(
+        w => w.participant_id === participant.id).length,
       // Lo más reciente primero, y dentro de una semana la medalla mayor arriba.
       medals: medals.slice().reverse(),
       sports,

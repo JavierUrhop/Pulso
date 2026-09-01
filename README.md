@@ -33,6 +33,12 @@ Uno por persona en toda la temporada. Quien lo usa queda fuera del cálculo de e
 
 El administrador puede otorgar comodines adicionales desde el panel, indicando la semana. Esos no consumen el cupo de la persona y quedan marcados como "Admin" en el listado, para que se note la diferencia.
 
+### Semanas inactivas
+
+Aparte del comodín, el administrador puede marcar semana a semana quién cuenta y quién no, desde una matriz de participantes por semanas. Una semana inactiva no suma puntos, queda fuera del promedio per cápita y no impide el bono de equipo completo.
+
+Es distinto del comodín en dos cosas: lo decide el administrador y no tiene tope. Sirve para vacaciones, licencias o gente que se suma a mitad de temporada. En el marcador se distingue del comodín con su propia etiqueta.
+
 ### Registro de entrenamientos
 
 Cada persona registra solo los suyos, eligiendo cuándo entrenó, el deporte y **entre 1 y 3 fotos** de respaldo, que pueden venir de la cámara o de la galería. La foto es obligatoria: sin ella el registro no se guarda.
@@ -80,9 +86,13 @@ Es público dentro de la aplicación: desde la ficha de cualquier integrante hay
 
 ### Escalado de metas
 
-Si alguien iguala **exactamente** su meta durante 3 semanas seguidas, la meta sube en 1 a la semana siguiente. Superarla no cuenta para la racha, solo igualarla. El administrador también puede fijar metas a mano.
+Cada semana en que alguien **llega a su meta o la supera** suma una marca a un contador histórico. No hace falta que sean semanas consecutivas: una semana floja no borra lo avanzado. Al juntar 3 marcas, la meta sube en 1 y el contador vuelve a cero, porque el objetivo ya cambió.
 
-> La racha se calcula **por persona**, no por categoría. Si prefieres que suba para toda una categoría a la vez, se cambia en `goalFor()` dentro de `src/lib/scoring.ts`.
+Las semanas con comodín o marcadas como inactivas se saltan por completo: ni suman ni estorban.
+
+La pantalla **Metas**, accesible desde el marcador, muestra el contador de cada participante, cuánto le falta para subir y el detalle semana a semana con su estado. El umbral de 3 es configurable por competencia (`streak_to_raise`), y el administrador también puede fijar metas a mano, lo que reinicia el contador desde esa semana.
+
+> El contador es **por persona**, no por categoría.
 
 ---
 
@@ -102,7 +112,8 @@ src/
     u/[uid]/        ← salón de trofeos público de cualquier integrante
     page.tsx        ← competencias activas
     c/[id]/
-      page.tsx        ← marcador: consolidado por defecto, filtro por semana
+      page.tsx        ← marcador: semana en curso por defecto, filtro por semana
+      metas/          ← contadores de avance hacia la próxima subida de meta
       asignarme/      ← reclamar tu cupo (se bloquea al elegirlo)
       yo/             ← salón de trofeos propio + ajustes
       yo/editar/      ← nombre, apodo y avatar
@@ -111,6 +122,7 @@ src/
       w/[wid]/        ← editar o eliminar un entrenamiento propio
       temporada/      ← acumulado, gráfico y ranking
       deportes/       ← marcador global: qué deporte hace cada equipo
+      metas/          ← avance de cada persona hacia su próxima subida
     admin/
       page.tsx        ← clave compartida + crear competencias
       [id]/           ← integrantes, reglas, metas manuales, registros
@@ -137,10 +149,11 @@ Las reglas viven en la base de datos (RLS), no solo en la interfaz:
 ## Probar las reglas
 
 ```bash
-node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 32 casos de puntaje
+node scripts/test-scoring.mjs && node scripts/run-tests.mjs   # 50 casos de puntaje
 node scripts/test-week.mjs                                    # 11 casos de fechas
 node scripts/test-trophies.mjs                                # 7 casos de medallas
 node scripts/test-window.mjs                                  # 14 casos de la ventana de 24 h
+node scripts/test-goals.mjs                                   # 16 casos de subida de meta
 ```
 
 El primero cubre bonos, topes, comodín, per cápita, escalado de metas, acumulado y la equivalencia entre el cálculo directo y el precalculado. El segundo cubre las semanas en horario de Chile, incluidos los domingos por la noche y el cambio de horario de verano. El tercero cubre la regla de la medalla doble y el conteo de deportes. El cuarto cubre la ventana de registro, con el lunes que arrastra el domingo anterior, el primer día de competencia y el horario de verano.
@@ -199,6 +212,10 @@ Dos cosas hacían que la app se sintiera trabada al cambiar de pestaña:
 ## Ajustes de la aplicación
 
 En **Perfil → engranaje** cada persona puede cambiar el tamaño del texto, con cuatro presets y un control fino de 85% a 140%. Toda la interfaz usa `rem`, así que la escala mueve texto y espaciado de forma proporcional. El valor se guarda en el dispositivo y se aplica antes del primer pintado, para que no salte al cargar.
+
+## Panel de administración: matriz de actividad
+
+En **Panel → competencia → Semanas activas** hay una tabla con los participantes en las filas y las semanas en las columnas. Marcado significa que esa semana cuenta. Se guarda todo de una vez y reemplaza el estado completo, para no dejar situaciones a medias.
 
 ## Actualizar una base que ya está en producción
 

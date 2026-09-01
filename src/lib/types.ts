@@ -53,6 +53,14 @@ export interface Wildcard {
   is_admin_grant: boolean;
 }
 
+export interface InactiveWeek {
+  id: string;
+  competition_id: string;
+  participant_id: string;
+  week_number: number;
+  reason: string | null;
+}
+
 export interface ParticipantGoal {
   id: string;
   competition_id: string;
@@ -87,6 +95,8 @@ export interface WeeklyScore {
   counts: boolean;
   metGoal: boolean;
   exceededGoal: boolean;
+  /** Fuera de la semana por decisión del administrador, no por comodín. */
+  absent: boolean;
 }
 
 export interface TeamWeekly {

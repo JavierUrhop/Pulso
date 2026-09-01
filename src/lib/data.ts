@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { activeWeek, weekNumberFor, isFinished } from '@/lib/week';
 import type {
-  Competition, Participant, Workout, Wildcard, ParticipantGoal, Sport,
+  Competition, Participant, Workout, Wildcard, ParticipantGoal, Sport, InactiveWeek,
 } from '@/lib/types';
 
 /**
@@ -13,7 +13,7 @@ export async function loadCompetition(competitionId: string) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [comp, parts, works, cards, goals, sports] = await Promise.all([
+  const [comp, parts, works, cards, goals, sports, inactive] = await Promise.all([
     supabase.from('competitions').select('*').eq('id', competitionId).single(),
     supabase.from('participants').select('*').eq('competition_id', competitionId)
       .order('display_name'),
@@ -22,6 +22,7 @@ export async function loadCompetition(competitionId: string) {
     supabase.from('wildcards').select('*').eq('competition_id', competitionId),
     supabase.from('participant_goals').select('*').eq('competition_id', competitionId),
     supabase.from('sports').select('*').eq('is_active', true),
+    supabase.from('inactive_weeks').select('*').eq('competition_id', competitionId),
   ]);
 
   if (comp.error || !comp.data) return null;
@@ -35,6 +36,7 @@ export async function loadCompetition(competitionId: string) {
     participants,
     workouts: (works.data ?? []) as Workout[],
     wildcards: (cards.data ?? []) as Wildcard[],
+    inactive: (inactive.data ?? []) as InactiveWeek[],
     goals: (goals.data ?? []) as ParticipantGoal[],
     // Orden alfabético español: 'Fútbol' después de 'Funcional', tildes incluidas.
     sports: ((sports.data ?? []) as Sport[])

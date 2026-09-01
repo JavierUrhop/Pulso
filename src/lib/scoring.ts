@@ -17,9 +17,10 @@ import type {
  *    los integrantes que cuentan esa semana.
  * 6. Comodín: excluye a la persona del cálculo de esa semana. No suma
  *    ni resta, y no rompe el bono de equipo.
- * 7. Si alguien iguala exactamente su meta `streak_to_raise` (3)
- *    semanas seguidas, su meta sube en 1 a la semana siguiente.
- *    Superar la meta NO cuenta para la racha (solo igualarla).
+ * 7. Cada semana en que llega a su meta —o la supera— suma uno a un
+ *    contador histórico. No hace falta que sean seguidas. Al acumular
+ *    `streak_to_raise` (3) semanas, la meta sube en 1 y el contador
+ *    vuelve a 0.
  * ---------------------------------------------------------------
  */
 
@@ -34,6 +35,19 @@ export interface ScoringContext {
   goals: Map<string, number[]>;
   /** entrenamientos contados por `${participantId}:${semana}` */
   counts: Map<string, number>;
+  /** semanas que no cuentan: comodín o inactividad marcada por el admin */
+  excluded: Set<string>;
+}
+
+/** Semanas fuera del cálculo, por comodín o por inactividad. */
+export function buildExclusions(
+  wildcards: { participant_id: string; week_number: number }[],
+  inactive: { participant_id: string; week_number: number }[] = [],
+): Set<string> {
+  const out = new Set<string>();
+  for (const w of wildcards) out.add(`${w.participant_id}:${w.week_number}`);
+  for (const w of inactive) out.add(`${w.participant_id}:${w.week_number}`);
+  return out;
 }
 
 export function createScoringContext(
@@ -42,6 +56,7 @@ export function createScoringContext(
   workouts: Workout[],
   goalOverrides: ParticipantGoal[],
   throughWeek: number,
+  excluded: Set<string> = new Set(),
 ): ScoringContext {
   const counts = new Map<string, number>();
   for (const w of workouts) {
@@ -51,10 +66,11 @@ export function createScoringContext(
 
   const goals = new Map<string, number[]>();
   for (const p of participants) {
-    goals.set(p.id, goalSeries(competition, p, counts, goalOverrides, throughWeek));
+    goals.set(p.id, computeGoals(
+      competition, p, counts, goalOverrides, throughWeek, excluded).series);
   }
 
-  return { goals, counts };
+  return { goals, counts, excluded };
 }
 
 function countOf(
@@ -63,48 +79,117 @@ function countOf(
   return Math.min(counts.get(`${participantId}:${week}`) ?? 0, cap);
 }
 
+/** Estado de una semana dentro del avance hacia la próxima meta. */
+export type GoalWeekStatus = 'cumplida' | 'superada' | 'no' | 'excluida' | 'sube';
+
+export interface GoalWeek {
+  week: number;
+  goal: number;
+  count: number;
+  status: GoalWeekStatus;
+  /** Semanas acumuladas al cerrar esa semana. */
+  progress: number;
+}
+
+export interface GoalTimeline {
+  series: number[];
+  weeks: GoalWeek[];
+  /** Meta vigente al final del período mirado. */
+  goal: number;
+  /** Semanas acumuladas hacia la próxima subida. */
+  progress: number;
+  /** Cuántas faltan para que suba. */
+  remaining: number;
+  threshold: number;
+}
+
 /**
- * Metas semana a semana en una sola pasada, aplicando el escalado por racha
- * y los ajustes manuales del administrador.
+ * Metas semana a semana, en una sola pasada.
+ *
+ * REGLA: cada semana en que la persona llega a su meta —o la supera— suma
+ * uno a un contador histórico. No hace falta que sean consecutivas: una
+ * semana floja no borra lo avanzado. Al llegar al umbral la meta sube en 1
+ * y el contador vuelve a 0, porque el objetivo ya cambió.
+ *
+ * Las semanas con comodín o marcadas como inactivas se saltan por completo:
+ * ni suman ni estorban.
  */
-function goalSeries(
+function computeGoals(
   competition: Competition,
   participant: Participant,
   counts: Map<string, number>,
   goalOverrides: ParticipantGoal[],
   throughWeek: number,
-): number[] {
+  excluded: Set<string> = new Set(),
+): GoalTimeline {
   const manual = goalOverrides
     .filter(g => g.participant_id === participant.id && g.source === 'manual')
     .sort((a, b) => a.week_number - b.week_number);
 
   const series: number[] = [0];
+  const weeks: GoalWeek[] = [];
+  const threshold = Math.max(1, competition.streak_to_raise);
+
   let goal = baseGoalFor(competition, participant);
-  let streak = 0;
+  let progress = 0;
 
   for (let wk = 1; wk <= Math.max(1, throughWeek); wk++) {
-    // Un ajuste manual manda desde su semana y reinicia el conteo de racha.
     const override = manual.filter(m => m.week_number === wk).pop();
     if (override) {
       goal = override.goal;
-      streak = 0;
+      progress = 0;
     }
 
     series[wk] = goal;
 
-    const count = countOf(counts, participant.id, wk, competition.max_weekly);
-    if (count === goal) {
-      streak += 1;
-      if (streak >= competition.streak_to_raise) {
-        goal = Math.min(goal + 1, competition.max_weekly);
-        streak = 0;
-      }
-    } else {
-      streak = 0;
+    if (excluded.has(`${participant.id}:${wk}`)) {
+      weeks.push({ week: wk, goal, count: 0, status: 'excluida', progress });
+      continue;
     }
+
+    const count = countOf(counts, participant.id, wk, competition.max_weekly);
+    let status: GoalWeekStatus = 'no';
+
+    if (count >= goal) {
+      status = count > goal ? 'superada' : 'cumplida';
+      progress += 1;
+    }
+
+    if (progress >= threshold) {
+      goal = Math.min(goal + 1, competition.max_weekly);
+      progress = 0;
+      status = 'sube';
+    }
+
+    weeks.push({ week: wk, goal: series[wk], count, status, progress });
   }
 
-  return series;
+  return {
+    series, weeks, goal, progress, threshold,
+    remaining: Math.max(0, threshold - progress),
+  };
+}
+
+/** Avance de una persona hacia su próxima subida de meta. */
+export function goalTimeline(
+  competition: Competition,
+  participant: Participant,
+  workouts: Workout[],
+  goalOverrides: ParticipantGoal[],
+  throughWeek: number,
+  ctx?: ScoringContext,
+): GoalTimeline {
+  const counts = ctx?.counts ?? (() => {
+    const m = new Map<string, number>();
+    for (const w of workouts) {
+      const key = `${w.participant_id}:${w.week_number}`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  })();
+
+  return computeGoals(competition, participant, counts, goalOverrides,
+    throughWeek, ctx?.excluded ?? new Set());
 }
 
 export function baseGoalFor(competition: Competition, participant: Participant): number {
@@ -130,10 +215,14 @@ export function goalFor(
     const key = `${w.participant_id}:${w.week_number}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return goalSeries(competition, participant, counts, goalOverrides, weekNumber)[weekNumber];
+  return computeGoals(competition, participant, counts, goalOverrides, weekNumber)
+    .series[weekNumber];
 }
 
-/** Semanas seguidas igualando exactamente la meta, para avisar antes de que suba. */
+/**
+ * Semanas acumuladas hacia la próxima subida de meta.
+ * Antes era una racha consecutiva; ahora el conteo es histórico.
+ */
 export function currentStreak(
   competition: Competition,
   participant: Participant,
@@ -142,25 +231,8 @@ export function currentStreak(
   goalOverrides: ParticipantGoal[],
   ctx?: ScoringContext,
 ): number {
-  const counts = ctx?.counts ?? (() => {
-    const m = new Map<string, number>();
-    for (const w of workouts) {
-      const key = `${w.participant_id}:${w.week_number}`;
-      m.set(key, (m.get(key) ?? 0) + 1);
-    }
-    return m;
-  })();
-
-  const goals = ctx?.goals.get(participant.id)
-    ?? goalSeries(competition, participant, counts, goalOverrides, upToWeek);
-
-  let streak = 0;
-  for (let wk = 1; wk < upToWeek; wk++) {
-    const count = countOf(counts, participant.id, wk, competition.max_weekly);
-    streak = count === (goals[wk] ?? 0) ? streak + 1 : 0;
-    if (streak >= competition.streak_to_raise) streak = 0;
-  }
-  return streak;
+  return goalTimeline(competition, participant, workouts, goalOverrides,
+    Math.max(0, upToWeek - 1), ctx).progress;
 }
 
 /** Puntaje semanal de todas las personas + resumen por equipo. */
@@ -174,14 +246,20 @@ export function scoreWeek(
   ctx?: ScoringContext,
 ): { scores: WeeklyScore[]; teams: Record<Team, TeamWeekly> } {
   const active = participants.filter(p => p.is_active);
-  const context = ctx
-    ?? createScoringContext(competition, participants, workouts, goalOverrides, weekNumber);
+  const context = ctx ?? createScoringContext(
+    competition, participants, workouts, goalOverrides, weekNumber,
+    buildExclusions(wildcards));
 
   // Paso 1: contar entrenamientos, metas y bonos individuales.
   const partial = active.map<WeeklyScore>(p => {
-    const usedWildcard = wildcards.some(
-      w => w.participant_id === p.id && w.week_number === weekNumber,
-    );
+    // Dos motivos distintos para quedar fuera de la semana: el comodín, que
+    // usa la propia persona, y la inactividad, que marca el administrador.
+    // El efecto sobre el puntaje es el mismo, pero conviene distinguirlos
+    // para poder explicarlo en pantalla.
+    const hasWildcard = wildcards.some(
+      w => w.participant_id === p.id && w.week_number === weekNumber);
+    const absent = !hasWildcard && context.excluded.has(`${p.id}:${weekNumber}`);
+    const usedWildcard = hasWildcard || absent;
     const workoutCount = countOf(context.counts, p.id, weekNumber, competition.max_weekly);
     const goal = context.goals.get(p.id)?.[weekNumber]
       ?? goalFor(competition, p, weekNumber, workouts, goalOverrides);
@@ -207,6 +285,7 @@ export function scoreWeek(
       counts: !usedWildcard,
       metGoal,
       exceededGoal,
+      absent,
     };
   });
 
@@ -250,12 +329,14 @@ export function scoreSeason(
   wildcards: Wildcard[],
   goalOverrides: ParticipantGoal[],
   throughWeek: number,
+  excluded?: Set<string>,
 ) {
   const weeks: { week: number; teams: Record<Team, TeamWeekly>; scores: WeeklyScore[] }[] = [];
   const totals = new Map<string, number>();
   const teamTotals: Record<Team, number> = { A: 0, B: 0 };
   const ctx = createScoringContext(
-    competition, participants, workouts, goalOverrides, throughWeek);
+    competition, participants, workouts, goalOverrides, throughWeek,
+    excluded ?? buildExclusions(wildcards));
 
   for (let wk = 1; wk <= throughWeek; wk++) {
     const { scores, teams } = scoreWeek(

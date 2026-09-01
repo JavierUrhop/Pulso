@@ -212,6 +212,24 @@ create trigger wildcards_cap
   before insert on public.wildcards
   for each row execute function public.enforce_wildcard_cap();
 
+-- ---------------------------------------------------------------------
+-- 8. Semanas inactivas (las marca el administrador)
+--    Una semana inactiva no suma puntos ni entra en el promedio del
+--    equipo, y no impide el bono de equipo completo.
+-- ---------------------------------------------------------------------
+create table if not exists public.inactive_weeks (
+  id              uuid primary key default gen_random_uuid(),
+  competition_id  uuid not null references public.competitions(id) on delete cascade,
+  participant_id  uuid not null references public.participants(id) on delete cascade,
+  week_number     int  not null check (week_number >= 1),
+  reason          text,
+  created_at      timestamptz not null default now(),
+  unique (participant_id, week_number)
+);
+
+create index if not exists inactive_weeks_competition_idx
+  on public.inactive_weeks (competition_id, week_number);
+
 -- =====================================================================
 -- ROW LEVEL SECURITY
 -- Lectura: cualquier usuario autenticado (la competencia es transparente).
@@ -309,6 +327,11 @@ create policy workouts_delete_own on public.workouts
          and p.user_id = auth.uid()
     )
   );
+
+-- inactive_weeks: lectura abierta, escritura solo desde el panel admin
+drop policy if exists inactive_weeks_read on public.inactive_weeks;
+create policy inactive_weeks_read on public.inactive_weeks
+  for select to authenticated using (true);
 
 -- wildcards
 drop policy if exists wildcards_read on public.wildcards;

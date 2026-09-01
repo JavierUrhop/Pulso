@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
-import { scoreWeek, scoreSeason, currentStreak, round1 } from '@/lib/scoring';
+import {
+  scoreWeek, scoreSeason, round1, createScoringContext, buildExclusions, goalTimeline,
+} from '@/lib/scoring';
 import { formatWeekRange } from '@/lib/week';
 import { Avatar, ProgressBar, Brand } from '@/components/ui';
 import { GoalBadges } from '@/components/Achievements';
@@ -27,22 +29,32 @@ export default async function Dashboard({
   const data = await loadCompetition(params.id);
   if (!data) notFound();
 
-  const { competition, participants, workouts, wildcards, goals, me, currentWeek, finished } = data;
+  const {
+    competition, participants, workouts, wildcards, goals, inactive, me, currentWeek, finished,
+  } = data;
   if (!me) redirect(`/c/${params.id}/asignarme`);
 
-  // Por defecto se muestra el consolidado de toda la competencia.
+  // Por defecto se muestra la semana en curso. El consolidado se pide
+  // explícitamente con ?semana=total.
   const raw = searchParams.semana;
   const asNumber = Number(raw);
-  const single = raw && asNumber >= 1 && asNumber <= currentWeek ? asNumber : null;
+  const single = raw === 'total'
+    ? null
+    : (raw && asNumber >= 1 && asNumber <= currentWeek ? asNumber : currentWeek);
 
-  const season = scoreSeason(competition, participants, workouts, wildcards, goals, currentWeek);
+  const ctx = createScoringContext(
+    competition, participants, workouts, goals, currentWeek,
+    buildExclusions(wildcards, inactive));
+
+  const season = scoreSeason(
+    competition, participants, workouts, wildcards, goals, currentWeek, ctx.excluded);
 
   let teamScore: Record<Team, { value: number; members: number; sweeps: number }>;
   let rows: Row[];
 
   if (single) {
     const { scores, teams } = scoreWeek(
-      competition, participants, workouts, wildcards, goals, single);
+      competition, participants, workouts, wildcards, goals, single, ctx);
 
     teamScore = {
       A: { value: teams.A.perCapita, members: teams.A.activeMembers, sweeps: teams.A.sweep ? 1 : 0 },
@@ -101,8 +113,11 @@ export default async function Dashboard({
 
   const aboutToRaise = participants
     .filter(p => p.is_active)
-    .map(p => ({ p, streak: currentStreak(competition, p, currentWeek, workouts, goals) }))
-    .filter(x => x.streak === competition.streak_to_raise - 1);
+    .map(p => ({
+      p,
+      t: goalTimeline(competition, p, workouts, goals, currentWeek, ctx),
+    }))
+    .filter(x => x.t.remaining === 1 && x.t.goal < competition.max_weekly);
 
   const heading = single
     ? `Semana ${single} · ${formatWeekRange(competition.start_date, single)}`
@@ -166,7 +181,7 @@ export default async function Dashboard({
       {/* Filtro de semanas */}
       <div className="mb-4 -mx-4 overflow-x-auto px-4">
         <div className="flex w-max gap-1.5">
-          <Link href={`/c/${params.id}`}
+          <Link href={`/c/${params.id}?semana=total`}
             className={`score shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-bold transition ${
               !single ? 'bg-navy-800 text-white'
                       : 'border border-line bg-ice-card text-ink-soft hover:bg-ice-sunk'}`}>
@@ -193,15 +208,20 @@ export default async function Dashboard({
         </div>
       ) : null}
 
-      {aboutToRaise.length > 0 && !finished && (
-        <div className="mb-3 rounded-xl border border-line bg-ice-card px-3.5 py-2.5">
-          <p className="eyebrow mb-0.5">Meta a punto de subir</p>
+      <Link href={`/c/${params.id}/metas`}
+        className="mb-3 flex items-center gap-3 rounded-xl border border-line bg-ice-card
+                   px-3.5 py-2.5 transition hover:bg-ice-sunk">
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow mb-0.5">Metas</p>
           <p className="text-[0.8125rem] text-ink-soft">
-            {aboutToRaise.map(x => x.p.nickname || x.p.display_name).join(', ')}
-            {' '}— una semana más igualando y su meta sube en 1.
+            {aboutToRaise.length > 0
+              ? `${aboutToRaise.map(x => x.p.nickname || x.p.display_name).join(', ')} `
+                + `${aboutToRaise.length === 1 ? 'está' : 'están'} a una semana de subir la meta.`
+              : 'Mira cuánto le falta a cada uno para que su meta suba.'}
           </p>
         </div>
-      )}
+        <span aria-hidden className="shrink-0 text-ink-faint">›</span>
+      </Link>
 
       <div className="space-y-3">
         {(['A', 'B'] as Team[]).map(team => {
@@ -246,7 +266,9 @@ export default async function Dashboard({
                           {single ? (
                             s?.usedWildcard ? (
                               <p className="mt-1 text-[0.6875rem] font-medium text-ink-faint">
-                                Comodín · fuera del cálculo
+                                {s.absent
+                                  ? 'Semana inactiva · no cuenta'
+                                  : 'Comodín · fuera del cálculo'}
                               </p>
                             ) : s ? (
                               <>

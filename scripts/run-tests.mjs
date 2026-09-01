@@ -1,5 +1,6 @@
 import { scoreWeek, goalFor, progressSegments, scoreSeason,
-  createScoringContext, currentStreak } from '../.tmp/out/scoring.mjs';
+  createScoringContext, currentStreak, goalTimeline,
+  buildExclusions } from '../.tmp/out/scoring.mjs';
 
 const comp = {
   id: 'c1', name: 'Test', start_date: '2026-07-13', end_date: null,
@@ -87,7 +88,7 @@ const eq = (label, got, want) => {
   eq('per cápita ignora al del comodín', teams.A.perCapita, 9.5);
 }
 
-// ---- 8. Escalado de meta: 3 semanas igualando exactamente
+// ---- 8. Escalado de meta: 3 semanas llegando a la meta
 {
   const p = P('a1','A','avanzada');
   const ws = [...W('a1',1,3), ...W('a1',2,3), ...W('a1',3,3)];
@@ -96,11 +97,40 @@ const eq = (label, got, want) => {
   eq('semana 4 sube a 4', goalFor(comp, p, 4, ws, []), 4);
 }
 
-// ---- 9. Superar la meta NO cuenta para la racha
+// ---- 9. Superar la meta TAMBIÉN cuenta para el contador
 {
   const p = P('a1','A','avanzada');
   const ws = [...W('a1',1,3), ...W('a1',2,5), ...W('a1',3,3)];
-  eq('superar rompe la racha, meta sigue en 3', goalFor(comp, p, 4, ws, []), 3);
+  eq('superar suma igual que igualar, sube en la 4', goalFor(comp, p, 4, ws, []), 4);
+}
+
+// ---- 9b. El contador es histórico: una semana floja no lo borra
+{
+  const p = P('a1','A','avanzada');
+  const ws = [...W('a1',1,3), ...W('a1',2,0), ...W('a1',3,3), ...W('a1',4,1), ...W('a1',5,4)];
+  eq('semana 5 aún en meta 3', goalFor(comp, p, 5, ws, []), 3);
+  eq('con la tercera semana lograda, la 6 sube a 4', goalFor(comp, p, 6, ws, []), 4);
+}
+
+// ---- 9c. Al subir la meta, el contador vuelve a cero
+{
+  const p = P('a1','A','avanzada');
+  const ws = [...W('a1',1,3), ...W('a1',2,3), ...W('a1',3,3),
+              ...W('a1',4,4), ...W('a1',5,4)];
+  const t = goalTimeline(comp, p, ws, [], 5);
+  eq('meta vigente tras subir', t.goal, 4);
+  eq('lleva 2 semanas hacia la siguiente subida', t.progress, 2);
+  eq('le falta 1 para volver a subir', t.remaining, 1);
+}
+
+// ---- 9d. Las semanas excluidas no suman ni estorban
+{
+  const p = P('a1','A','avanzada');
+  const ws = [...W('a1',1,3), ...W('a1',2,3), ...W('a1',3,3)];
+  const excl = buildExclusions([{ participant_id:'a1', week_number:2 }]);
+  const ctx = createScoringContext(comp, [p], ws, [], 4, excl);
+  eq('la semana con comodín no cuenta para el contador',
+    ctx.goals.get('a1')[4], 3);
 }
 
 // ---- 10. Override manual reinicia el conteo
@@ -155,8 +185,8 @@ const eq = (label, got, want) => {
   const p = P('a1','A','avanzada');
   const ws = [...W('a1',1,3), ...W('a1',2,3)];
   const ctx = createScoringContext(comp, [p], ws, [], 3);
-  eq('racha con contexto', currentStreak(comp, p, 3, ws, [], ctx), 2);
-  eq('racha sin contexto', currentStreak(comp, p, 3, ws, []), 2);
+  eq('avance con contexto', currentStreak(comp, p, 3, ws, [], ctx), 2);
+  eq('avance sin contexto', currentStreak(comp, p, 3, ws, []), 2);
 }
 
 // ---- 16. Un ajuste manual reinicia la racha en la semana indicada
@@ -166,6 +196,46 @@ const eq = (label, got, want) => {
   const goals = [{ id:'g1', competition_id:'c1', participant_id:'a1', week_number:2, goal:4, source:'manual' }];
   eq('meta manual vale desde su semana', goalFor(comp, p, 2, ws, goals), 4);
   eq('y se mantiene después', goalFor(comp, p, 5, ws, goals), 4);
+}
+
+// ---- 17. Semanas inactivas: no suman y no rompen el bono de equipo
+{
+  const ps = [P('a1','A','avanzada'), P('a2','A','inicial'), P('a3','A','inicial')];
+  const ws = [...W('a1',1,3), ...W('a2',1,2)];   // a3 no entrenó
+  const excl = buildExclusions([], [{ participant_id:'a3', week_number:1 }]);
+  const ctx = createScoringContext(comp, ps, ws, [], 1, excl);
+  const { scores, teams } = scoreWeek(comp, ps, ws, [], [], 1, ctx);
+
+  const a3 = scores.find(s => s.participantId === 'a3');
+  eq('la persona inactiva queda marcada como ausente', a3.absent, true);
+  eq('y no como comodín propio',
+    a3.usedWildcard && !ps.find(p => p.id === 'a3').wildcard, true);
+  eq('no entra en el promedio del equipo', teams.A.activeMembers, 2);
+  eq('el equipo igual logra el pleno', teams.A.sweep, true);
+  eq('per cápita = ((3+2+5)+(2+2+5))/2 = 9.5', teams.A.perCapita, 9.5);
+}
+
+// ---- 18. Una semana inactiva no frena el avance hacia la meta
+{
+  const p = P('a1','A','avanzada');
+  const ws = [...W('a1',1,3), ...W('a1',3,3), ...W('a1',4,3)];
+  const excl = buildExclusions([], [{ participant_id:'a1', week_number:2 }]);
+  const ctx = createScoringContext(comp, [p], ws, [], 5, excl);
+  const t = goalTimeline(comp, p, ws, [], 5, ctx);
+  eq('la semana inactiva se salta', t.weeks[1].status, 'excluida');
+  eq('tras 3 semanas logradas la meta sube a 4', t.goal, 4);
+}
+
+// ---- 19. La línea de tiempo marca en qué semana subió la meta
+{
+  const p = P('a1','A','inicial');
+  const ws = [...W('a1',1,2), ...W('a1',2,3), ...W('a1',3,2)];
+  const t = goalTimeline(comp, p, ws, [], 3);
+  eq('semana 1 cumplida', t.weeks[0].status, 'cumplida');
+  eq('semana 2 superada', t.weeks[1].status, 'superada');
+  eq('semana 3 dispara la subida', t.weeks[2].status, 'sube');
+  eq('el contador quedó en cero', t.progress, 0);
+  eq('la meta nueva es 3', t.goal, 3);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);

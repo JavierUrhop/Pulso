@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
-import { scoreSeason } from '@/lib/scoring';
+import { scoreSeason, buildExclusions } from '@/lib/scoring';
 import { Avatar, ProgressBar } from '@/components/ui';
 import { GoalBadges } from '@/components/Achievements';
 import type { Team } from '@/lib/types';
@@ -16,8 +16,11 @@ export default async function Temporada({
   const data = await loadCompetition(params.id);
   if (!data) notFound();
 
-  const { competition, participants, workouts, wildcards, goals, currentWeek } = data;
-  const season = scoreSeason(competition, participants, workouts, wildcards, goals, currentWeek);
+  const {
+    competition, participants, workouts, wildcards, goals, inactive, currentWeek,
+  } = data;
+  const season = scoreSeason(competition, participants, workouts, wildcards, goals,
+    currentWeek, buildExclusions(wildcards, inactive));
 
   const filter = (searchParams.equipo === 'A' || searchParams.equipo === 'B')
     ? (searchParams.equipo as Team) : null;

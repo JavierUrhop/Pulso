@@ -407,6 +407,54 @@ export async function shiftWeeks(formData: FormData) {
   redirect(`/admin/${id}?ok=${encodeURIComponent(`Se movieron ${moved} registros.`)}`);
 }
 
+// ---------------------------------------------------------------- actividad
+
+/**
+ * Guarda la matriz de semanas activas. Llegan marcadas las semanas
+ * ACTIVAS; lo que no viene marcado se registra como inactivo.
+ *
+ * Una semana inactiva no suma puntos, no entra en el promedio per cápita
+ * y no impide el bono de equipo completo.
+ */
+export async function saveActivity(formData: FormData) {
+  const supabase = await requireAdmin();
+  const competitionId = String(formData.get('competition_id'));
+  const totalWeeks = Number(formData.get('total_weeks'));
+
+  const { data: parts } = await supabase
+    .from('participants').select('id').eq('competition_id', competitionId);
+
+  const active = new Set(
+    formData.getAll('active').map(v => String(v)),   // "participantId:semana"
+  );
+
+  const rows: { competition_id: string; participant_id: string; week_number: number }[] = [];
+  for (const p of parts ?? []) {
+    for (let wk = 1; wk <= totalWeeks; wk++) {
+      if (!active.has(`${p.id}:${wk}`)) {
+        rows.push({ competition_id: competitionId, participant_id: p.id, week_number: wk });
+      }
+    }
+  }
+
+  // Se reemplaza el set completo: más simple y sin estados a medias.
+  const { error: clearError } = await supabase
+    .from('inactive_weeks').delete().eq('competition_id', competitionId);
+  if (clearError) fail(`/admin/${competitionId}/actividad`, clearError.message);
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from('inactive_weeks').insert(rows);
+    if (error) fail(`/admin/${competitionId}/actividad`, error.message);
+  }
+
+  revalidatePath(`/admin/${competitionId}/actividad`);
+  revalidatePath(`/c/${competitionId}`);
+  redirect(`/admin/${competitionId}/actividad?ok=${encodeURIComponent(
+    rows.length === 0
+      ? 'Todos quedaron activos en todas las semanas.'
+      : `Guardado. ${rows.length} ${rows.length === 1 ? 'semana marcada' : 'semanas marcadas'} como inactivas.`)}`);
+}
+
 // ---------------------------------------------------------------- deportes
 
 export async function addSport(formData: FormData) {

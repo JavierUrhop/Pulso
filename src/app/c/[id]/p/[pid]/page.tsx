@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
-import { scoreWeek, currentStreak } from '@/lib/scoring';
+import {
+  scoreWeek, scoreSeason, createScoringContext, buildExclusions, goalTimeline,
+} from '@/lib/scoring';
 import { DAY_NAMES, formatWeekRange } from '@/lib/week';
 import { Avatar, ProgressBar, Stat } from '@/components/ui';
 import { GoalBadges } from '@/components/Achievements';
@@ -16,12 +18,18 @@ export default async function ParticipantDetail({
   const data = await loadCompetition(params.id);
   if (!data) notFound();
 
-  const { competition, participants, workouts, wildcards, goals, me, currentWeek } = data;
+  const {
+    competition, participants, workouts, wildcards, goals, inactive, me, currentWeek,
+  } = data;
+  const ctx = createScoringContext(
+    competition, participants, workouts, goals, currentWeek,
+    buildExclusions(wildcards, inactive));
   const p = participants.find(x => x.id === params.pid);
   if (!p) notFound();
 
   const week = Math.min(Math.max(Number(searchParams.semana) || currentWeek, 1), currentWeek);
-  const { scores } = scoreWeek(competition, participants, workouts, wildcards, goals, week);
+  const { scores } = scoreWeek(
+    competition, participants, workouts, wildcards, goals, week, ctx);
   const s = scores.find(x => x.participantId === p.id)!;
 
   const log = workouts
@@ -30,13 +38,11 @@ export default async function ParticipantDetail({
 
   const used = wildcards.filter(w => w.participant_id === p.id);
   const isMe = me?.id === p.id;
-  const streak = currentStreak(competition, p, week, workouts, goals);
-  const seasonTotal = Array.from({ length: currentWeek }, (_, i) => i + 1)
-    .reduce((sum, wk) => {
-      const r = scoreWeek(competition, participants, workouts, wildcards, goals, wk)
-        .scores.find(x => x.participantId === p.id);
-      return sum + (r && r.counts ? r.total : 0);
-    }, 0);
+  const timeline = goalTimeline(competition, p, workouts, goals, currentWeek, ctx);
+  const streak = timeline.progress;
+  const seasonTotal = scoreSeason(
+    competition, participants, workouts, wildcards, goals, currentWeek, ctx.excluded,
+  ).participantTotals.get(p.id) ?? 0;
 
   return (
     <>
@@ -117,9 +123,12 @@ export default async function ParticipantDetail({
 
       {streak > 0 && !s.usedWildcard && (
         <p className="mb-4 rounded-xl border border-line bg-ice-card px-3.5 py-2.5 text-[0.8125rem] text-ink-soft">
-          <span className="font-semibold text-ink">Racha de {streak}</span>
-          {' '}{streak === 1 ? 'semana' : 'semanas'} igualando la meta.
-          Con {competition.streak_to_raise} seguidas sube a {s.goal + 1}.
+          <span className="font-semibold text-ink">
+            {streak} de {timeline.threshold}
+          </span>
+          {' '}semanas logradas. {timeline.remaining === 0
+            ? 'La meta sube ahora.'
+            : `Faltan ${timeline.remaining} para subir a ${s.goal + 1}.`}
         </p>
       )}
 
@@ -134,9 +143,14 @@ export default async function ParticipantDetail({
 
       {s.usedWildcard ? (
         <div className="card p-6 text-center">
-          <p className="display text-base">Comodín aplicado</p>
+          <p className="display text-base">
+            {s.absent ? 'Semana inactiva' : 'Comodín aplicado'}
+          </p>
           <p className="mx-auto mt-1 max-w-xs text-[0.8125rem] text-ink-soft">
-            No suma ni resta puntos, y el promedio del equipo se calcula sin esta persona.
+            {s.absent
+              ? 'El administrador marcó esta semana como no contable.'
+              : 'No suma ni resta puntos.'}
+            {' '}El promedio del equipo se calcula sin esta persona.
           </p>
         </div>
       ) : log.length === 0 ? (

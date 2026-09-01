@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { loadCompetition } from '@/lib/data';
-import { scoreWeek } from '@/lib/scoring';
+import { scoreWeek, createScoringContext, buildExclusions } from '@/lib/scoring';
 import { registrationSlots } from '@/lib/week';
 import { BackLink } from '@/components/ui';
 import WorkoutForm from './WorkoutForm';
@@ -13,7 +13,8 @@ export default async function Registrar({ params }: { params: { id: string } }) 
   if (!data.me) redirect(`/c/${params.id}/asignarme`);
 
   const {
-    competition, participants, workouts, wildcards, goals, me, currentWeek, sports, finished,
+    competition, participants, workouts, wildcards, goals, inactive,
+    me, currentWeek, sports, finished,
   } = data;
 
   if (finished) {
@@ -36,7 +37,9 @@ export default async function Registrar({ params }: { params: { id: string } }) 
   const slots = registrationSlots(competition.start_date, competition.total_weeks);
 
   const { scores } = scoreWeek(
-    competition, participants, workouts, wildcards, goals, currentWeek);
+    competition, participants, workouts, wildcards, goals, currentWeek,
+    createScoringContext(competition, participants, workouts, goals, currentWeek,
+      buildExclusions(wildcards, inactive)));
   const mine = scores.find(s => s.participantId === me.id)!;
 
   // Cuántos lleva en cada semana alcanzable, para controlar el tope.
