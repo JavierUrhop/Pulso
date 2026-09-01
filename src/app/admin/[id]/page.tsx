@@ -96,6 +96,19 @@ export default async function AdminCompetition({
         )}
       </section>
 
+      <Link href={`/admin/${c.id}/actividad`}
+        className="card mb-6 flex items-center gap-3 p-4 transition hover:bg-ice-sunk">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ice-sunk text-lg"
+          aria-hidden>🗓️</span>
+        <div className="min-w-0 flex-1">
+          <p className="display text-base leading-tight">Actividad por semana</p>
+          <p className="mt-0.5 text-[0.6875rem] text-ink-faint">
+            Marca qué semanas cuentan para cada integrante
+          </p>
+        </div>
+        <span aria-hidden className="text-ink-faint">→</span>
+      </Link>
+
       {/* Calendario de la competencia */}
       <section className="card mb-6 p-4">
         <p className="eyebrow mb-3">Calendario</p>
